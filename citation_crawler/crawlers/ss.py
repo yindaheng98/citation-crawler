@@ -27,11 +27,27 @@ async def search_by_title(title: str) -> str:
     return paperId
 
 
-fields_references = "title,year,authors,externalIds,publicationTypes,journal"
+fields_authors = "externalIds,name,affiliations"
+root_authors = f"semanticscholar/authors--{fields_authors.replace(',', '-')}"
+
+
+async def get_authors(paperId: str) -> dict:
+    cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_AUTHORS')
+    cache_days = cache_days if cache_days is not None else 300
+    paperId = paperId.lower()
+    url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/authors?fields={fields_authors}"
+    data = await download_item(url, os.path.join(root_authors, f"{paperId}.json"), cache_days)
+    if not data or 'data' not in data:
+        return []
+    data = data['data']
+    return data
+
+
+fields_references = f"title,year,authors,externalIds,publicationTypes,journal"
 root_references = f"semanticscholar/references--{fields_references.replace(',', '-')}"
 
 
-async def get_references(paperId: str) -> str:
+async def get_references(paperId: str) -> dict:
     cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_REFERENCES')
     cache_days = cache_days if cache_days is not None else 300
     paperId = paperId.lower()
@@ -43,16 +59,17 @@ async def get_references(paperId: str) -> str:
     return [d['citedPaper'] for d in data]
 
 
-fields_detail = "title,year,authors,externalIds,publicationTypes,journal"
-root_detail = f"semanticscholar/detail--{fields_detail.replace(',', '-')}"
+fields_authors_sub = ','.join([("authors." + f) for f in fields_authors.split(',')])
+fields_paper = f"title,year,{fields_authors_sub},externalIds,publicationTypes,journal"
+root_paper = f"semanticscholar/paper--{fields_paper.replace(',', '-')}"
 
 
-async def get_detail(paperId: str) -> str:
-    cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_DETAIL')
+async def get_paper(paperId: str) -> dict:
+    cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_PAPER')
     cache_days = cache_days if cache_days is not None else 300
     paperId = paperId.lower()
-    url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}?fields={fields_detail}"
-    data = await download_item(url, os.path.join(root_detail, f"{paperId}.json"), cache_days)
+    url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}?fields={fields_paper}"
+    data = await download_item(url, os.path.join(root_paper, f"{paperId}.json"), cache_days)
     if not data or 'paperId' not in data or data['paperId'].lower() != paperId:
         return None
     return data
