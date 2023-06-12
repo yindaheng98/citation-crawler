@@ -2,6 +2,7 @@ import logging
 import re
 import os
 
+from citation_crawler.graph import Crawler
 from .common import fetch_item, download_item, getenv_int
 
 logger = logging.getLogger("semanticscholar")
@@ -73,3 +74,21 @@ async def get_paper(paperId: str) -> dict:
     if not data or 'paperId' not in data or data['paperId'].lower() != paperId:
         return None
     return data
+
+class SemanticScholarCrawler(Crawler):
+    def __init__(self, paperId_list: list[str]) -> None:
+        super().__init__(paperId_list)
+        self.papers = {}
+
+    async def get_references(self, paperId):
+        if paperId not in self.papers:
+            self.papers[paperId] = await get_paper(paperId)
+        for paper in await get_references(paperId):
+            paperId = paper['paperId']
+            self.papers[paperId] = paper
+            yield paperId
+
+    def filter_papers(self, paperIds):
+        """在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集"""
+        for paperId in paperIds:
+            yield paperId
