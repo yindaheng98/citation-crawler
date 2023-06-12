@@ -1,1 +1,1 @@
-from .ss import search_by_title, get_references
+from .ss import search_by_title, get_references, get_detail
