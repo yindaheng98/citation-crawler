@@ -73,7 +73,7 @@ async def get_authors(paperId: str) -> Iterable[Author]:
     if not data or 'data' not in data:
         return
     for a in data['data']:
-        if 'authorId' in a:
+        if 'authorId' in a and a['authorId']:
             yield SSAuthor(a)
 
 
