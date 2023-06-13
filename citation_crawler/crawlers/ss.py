@@ -135,13 +135,10 @@ async def get_paper(paperId: str) -> Optional[SSPaper]:
 
 
 class SemanticScholarCrawler(Crawler):
-    def __init__(self, paperId_list: list[str]) -> None:
-        super().__init__(paperId_list)
-        self.papers = {}
 
-    async def get_references(self, paperId):
-        if paperId not in self.papers:
-            self.papers[paperId] = await get_paper(paperId)
-        async for paper in get_references(paperId):
-            self.papers[paper.paperId()] = paper
-            yield paper.paperId()
+    async def get_paper(self, paperId):
+        return await get_paper(paperId)
+
+    async def get_references(self, paper):
+        async for paper in get_references(paper.paperId()):
+            yield paper

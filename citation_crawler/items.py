@@ -5,6 +5,10 @@ from typing import Optional
 class Author(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
+    def authorId(self) -> str:
+        return ''
+
+    @abc.abstractmethod
     def name(self) -> Optional[str]:
         return None
 
@@ -22,6 +26,10 @@ class Author(metaclass=abc.ABCMeta):
 
 
 class Paper(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def paperId(self) -> str:
+        return ''
 
     @abc.abstractmethod
     def dblp_id(self) -> Optional[str]:

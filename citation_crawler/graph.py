@@ -1,9 +1,9 @@
 import abc
-import asyncio
 import logging
-from itertools import combinations, chain
-from aiostream import stream
-from typing import Optional, Iterable
+import asyncio
+from typing import Iterable, Tuple, Optional
+
+from .items import Paper, Author
 
 
 logger = logging.getLogger("graph")
@@ -11,40 +11,57 @@ logger = logging.getLogger("graph")
 
 class Crawler(metaclass=abc.ABCMeta):
     def __init__(self, paperId_list: list[str]) -> None:
-        self.paperId_checked: dict[str, bool] = {paperId: False for paperId in paperId_list}
+        self.papers: dict[str, Paper] = {paperId: None for paperId in paperId_list}
+        self.checked = set()
 
     @abc.abstractmethod
-    async def get_references(self, paperId: str) -> Iterable[str]:
+    async def get_paper(self, paperId: str) -> Optional[Paper]:
+        """获取某篇论文的详情"""
+        return None
+
+    @abc.abstractmethod
+    async def get_references(self, paper: Paper) -> Iterable[Paper]:
         """获取某篇论文的引文"""
-        yield paperId
+        return
 
     @abc.abstractmethod
-    def filter_papers(self, paperIds: Iterable[str]) -> Iterable[str]:
+    def filter_papers(self, papers: Iterable[Paper]) -> Iterable[Paper]:
         """在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集"""
-        for paperId in paperIds:
-            yield paperId
+        for paper in papers:
+            yield paper
+
+    async def init_paper(self, paperId) -> Tuple[int, int]:
+        init, refs = 0, 0
+        if paperId not in self.papers or not self.papers[paperId]:
+            paper = await self.get_paper(paperId)
+            if not paper:
+                return init, refs
+            paperId = paper.paperId()
+            init += 1
+        else:
+            paper = self.papers[paperId]
+            paperId = paper.paperId()
+        self.papers[paperId] = paper
+        if paperId in self.checked:
+            return init, refs
+        async for new_paper in self.get_references(paper):
+            if not new_paper:
+                continue
+            new_paperId = new_paper.paperId()
+            if new_paperId not in self.papers or not self.papers[new_paperId]:
+                self.papers[new_paperId] = new_paper
+                refs += 1
+        self.checked.add(paperId)
+        return init, refs
 
     async def bfs_once(self) -> int:
-        iters = []
-        init_paper_count = 0
-        for paperId, checked in list(self.paperId_checked.items()):
-            if not checked:
-                init_paper_count += 1
-                iters.append(self.get_references(paperId))
-                self.paperId_checked[paperId] = True
-        logger.info("Initializing %s papers" % init_paper_count)
-        new_paperIds = set()
-        async with stream.merge(*iters).stream() as streamer: # this is the reason why asyncio.run(main()) is wrong
-            async for new_paperId in streamer:
-                new_paperIds.add(new_paperId)
-
-        new_paper_count = 0
-        for paperId in self.filter_papers(new_paperIds):
-            if paperId not in self.paperId_checked:
-                self.paperId_checked[paperId] = False
-                new_paper_count += 1
-        logger.info("Added %s new papers" % new_paper_count)
-        return new_paper_count
+        tasks = [self.init_paper(paperId) for paperId in list(self.papers.keys())]
+        total_init, total_refs = 0, 0
+        for init, refs in await asyncio.gather(*tasks):
+            total_init += init
+            total_refs += refs
+        logger.info("Initializing %s papers and %s refernces" % (total_init, total_refs))
+        return total_init + total_refs
 
 
 class Summarizer(metaclass=abc.ABCMeta):
