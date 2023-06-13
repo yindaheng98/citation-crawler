@@ -33,10 +33,10 @@ class SSAuthor(Author):
     def __init__(self, data) -> None:
         super().__init__()
         self.data = data
+        assert 'authorId' in self.data
 
     def authorId(self) -> str:
-        if 'authorId' in self.data:
-            return self.data['authorId']
+        return self.data['authorId']
 
     def name(self) -> Optional[str]:
         if 'name' in self.data:
@@ -82,6 +82,7 @@ class SSPaper(Paper):
         super().__init__()
         self.data = data
         self.author_data = None
+        assert 'paperId' in self.data
 
     def paperId(self) -> str:
         return self.data['paperId']

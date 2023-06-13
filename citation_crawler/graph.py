@@ -13,6 +13,7 @@ class Crawler(metaclass=abc.ABCMeta):
     def __init__(self, paperId_list: list[str]) -> None:
         self.papers: dict[str, Paper] = {paperId: None for paperId in paperId_list}
         self.checked = set()
+        self.ref_idx: dict[str, set[str]] = {}
 
     @abc.abstractmethod
     async def get_paper(self, paperId: str) -> Optional[Paper]:
@@ -48,6 +49,9 @@ class Crawler(metaclass=abc.ABCMeta):
             if not new_paper:
                 continue
             new_paperId = new_paper.paperId()
+            if paperId not in self.ref_idx:
+                self.ref_idx[paperId] = set()
+            self.ref_idx[paperId].add(new_paperId)
             if new_paperId not in self.papers or not self.papers[new_paperId]:
                 self.papers[new_paperId] = new_paper
                 refs += 1
