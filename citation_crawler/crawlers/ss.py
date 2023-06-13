@@ -33,7 +33,7 @@ class SSAuthor(Author):
     def __init__(self, data) -> None:
         super().__init__()
         self.data = data
-        assert 'authorId' in self.data
+        assert 'authorId' in self.data and self.data['authorId']
 
     def authorId(self) -> str:
         return self.data['authorId']
@@ -82,7 +82,7 @@ class SSPaper(Paper):
         super().__init__()
         self.data = data
         self.author_data = None
-        assert 'paperId' in self.data
+        assert 'paperId' in self.data and self.data['paperId']
 
     def paperId(self) -> str:
         return self.data['paperId']
@@ -140,7 +140,7 @@ async def get_references(paperId: str) -> Iterable[SSPaper]:
         return
     data = data['data']
     for d in data:
-        if 'citedPaper' in d and 'paperId' in d['citedPaper']:
+        if 'citedPaper' in d and 'paperId' in d['citedPaper'] and d['citedPaper']['paperId' ]:
             yield SSPaper(d['citedPaper'])
 
 
