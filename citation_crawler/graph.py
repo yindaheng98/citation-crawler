@@ -34,7 +34,7 @@ class Crawler(metaclass=abc.ABCMeta):
                 self.paperId_checked[paperId] = True
         logger.info("Initializing %s papers" % init_paper_count)
         new_paperIds = set()
-        async with stream.merge(*iters).stream() as streamer:
+        async with stream.merge(*iters).stream() as streamer: # this is the reason why asyncio.run(main()) is wrong
             async for new_paperId in streamer:
                 new_paperIds.add(new_paperId)
 
