@@ -20,6 +20,9 @@ async def main():
     crawler = DefaultSemanticScholarCrawler(None, [paperId])
     print(await crawler.bfs_once())
     print(await crawler.bfs_once())
+    for paper in crawler.papers.values():
+        async for author in paper.authors():
+            print(author.__dict__())
 
 # asyncio.run(main()) # Wrong!
 loop = asyncio.get_event_loop()

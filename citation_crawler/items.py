@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Optional, Iterable
 
 
 class Author(metaclass=abc.ABCMeta):
@@ -46,6 +46,10 @@ class Paper(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def doi(self) -> Optional[str]:
         return None
+
+    @abc.abstractmethod
+    def authors(self) -> Iterable[Author]:
+        return
 
     def __dict__(self) -> dict:
         d = {}

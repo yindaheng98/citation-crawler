@@ -73,13 +73,15 @@ async def get_authors(paperId: str) -> Iterable[Author]:
     if not data or 'data' not in data:
         return
     for a in data['data']:
-        yield SSAuthor(a)
+        if 'authorId' in a:
+            yield SSAuthor(a)
 
 
 class SSPaper(Paper):
     def __init__(self, data) -> None:
         super().__init__()
         self.data = data
+        self.author_data = None
 
     def paperId(self) -> str:
         return self.data['paperId']
@@ -100,6 +102,28 @@ class SSPaper(Paper):
         if 'externalIds' in self.data and 'DOI' in self.data['externalIds']:
             return self.data['externalIds']['DOI']
 
+    async def _get_authors_from_author_data(self) -> Iterable[Author]:
+        if not self.author_data:
+            authors = []
+            async for author in get_authors(self.paperId()):
+                authors.append(author)
+            self.author_data = authors
+        for author in self.author_data:
+            yield author
+
+    async def authors(self) -> Iterable[Author]:
+        if 'authors' in self.data and len(self.data['authors']) >= 0:
+            for a in self.data['authors']:
+                if 'authorId' not in a or 'externalIds' not in a or not a['externalIds']:
+                    async for author in self._get_authors_from_author_data():
+                        yield author
+                    return
+            for a in self.data['authors']:
+                yield SSAuthor(a)
+        else:
+            async for author in self._get_authors_from_author_data():
+                yield author
+
 
 fields_references = f"title,year,authors,externalIds,publicationTypes,journal"
 root_references = f"semanticscholar/references--{fields_references.replace(',', '-')}"
@@ -115,7 +139,8 @@ async def get_references(paperId: str) -> Iterable[SSPaper]:
         return
     data = data['data']
     for d in data:
-        yield SSPaper(d['citedPaper'])
+        if 'citedPaper' in d and 'paperId' in d['citedPaper']:
+            yield SSPaper(d['citedPaper'])
 
 
 fields_authors_sub = ','.join([("authors." + f) for f in fields_authors.split(',')])
