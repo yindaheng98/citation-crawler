@@ -1,5 +1,5 @@
 import asyncio
-from citation_crawler.crawlers.ss import search_by_title, get_authors
+from citation_crawler.crawlers.ss import search_by_title, get_references
 from citation_crawler.crawlers import SemanticScholarCrawler
 
 
@@ -16,11 +16,9 @@ class DefaultSemanticScholarCrawler(SemanticScholarCrawler):
 
 
 async def main():
-    paperId = await search_by_title("Understanding  the unstable convergence of gradient descent")
-    print(paperId)
-    async for author in get_authors(paperId):
-        print(author.__dict__())
+    paperId = '247086a46f289035a5c74d758c359890a568f596'
     crawler = DefaultSemanticScholarCrawler(None, [paperId])
+    print(await crawler.bfs_once())
     print(await crawler.bfs_once())
 
 asyncio.run(main())

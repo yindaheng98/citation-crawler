@@ -31,6 +31,7 @@ class Crawler(metaclass=abc.ABCMeta):
             if not checked:
                 init_paper_count += 1
                 iters.append(self.get_references(paperId))
+                self.paperId_checked[paperId] = True
         logger.info("Initializing %s papers" % init_paper_count)
         new_paperIds = set()
         async with stream.merge(*iters).stream() as streamer:
@@ -40,7 +41,7 @@ class Crawler(metaclass=abc.ABCMeta):
         new_paper_count = 0
         for paperId in self.filter_papers(new_paperIds):
             if paperId not in self.paperId_checked:
-                self.paperId_checked[paperId] = None
+                self.paperId_checked[paperId] = False
                 new_paper_count += 1
         logger.info("Added %s new papers" % new_paper_count)
         return new_paper_count

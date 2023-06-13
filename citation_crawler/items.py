@@ -12,11 +12,19 @@ class Author(metaclass=abc.ABCMeta):
     def dblp_pid(self) -> Optional[str]:
         return None
 
+    def __dict__(self) -> dict:
+        d = {}
+        if self.name():
+            d['name'] = self.name()
+        if self.dblp_pid():
+            d['dblp_pid'] = self.dblp_pid()
+        return d
+
 
 class Paper(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def dblp_key(self) -> Optional[str]:
+    def dblp_id(self) -> Optional[str]:
         return None
 
     @abc.abstractmethod
@@ -33,12 +41,12 @@ class Paper(metaclass=abc.ABCMeta):
 
     def __dict__(self) -> dict:
         d = {}
-        if self.dblp_key():
-            d['dblp_key'] = self.dblp_key()
+        if self.dblp_id():
+            d['dblp_id'] = self.dblp_id()
         if self.title():
             d['title'] = self.title()
         if self.year():
             d['year'] = self.year()
         if self.doi():
-            d['year'] = self.doi()
+            d['doi'] = self.doi()
         return d
