@@ -75,6 +75,7 @@ async def get_paper(paperId: str) -> dict:
         return None
     return data
 
+
 class SemanticScholarCrawler(Crawler):
     def __init__(self, paperId_list: list[str]) -> None:
         super().__init__(paperId_list)
@@ -86,9 +87,4 @@ class SemanticScholarCrawler(Crawler):
         for paper in await get_references(paperId):
             paperId = paper['paperId']
             self.papers[paperId] = paper
-            yield paperId
-
-    def filter_papers(self, paperIds):
-        """在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集"""
-        for paperId in paperIds:
             yield paperId
