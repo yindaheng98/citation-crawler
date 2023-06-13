@@ -1,8 +1,9 @@
 import logging
 import re
 import os
+from typing import Iterable, Optional
 
-from citation_crawler.graph import Crawler
+from citation_crawler import Crawler, Author, Paper
 from .common import fetch_item, download_item, getenv_int
 
 logger = logging.getLogger("semanticscholar")
@@ -28,20 +29,51 @@ async def search_by_title(title: str) -> str:
     return paperId
 
 
+class SSAuthor(Author):
+    def __init__(self, data) -> None:
+        super().__init__()
+        self.data = data
+
+    def authorId(self) -> str:
+        if 'authorId' in self.data:
+            return self.data['authorId']
+
+    def name(self) -> Optional[str]:
+        if 'name' in self.data:
+            return self.data['name']
+
+    def dblp_pid(self) -> Optional[str]:
+        return None
+
+    def dblp_name(self) -> Optional[str]:
+        if 'externalIds' in self.data and 'DBLP' in self.data['externalIds']:
+            return self.data['externalIds']['DBLP']
+
+    def __dict__(self) -> dict:
+        d = {}
+        if self.authorId():
+            d['authorId'] = self.authorId()
+        if self.name():
+            d['name'] = self.name()
+        if self.dblp_name():
+            d['dblp_name'] = self.dblp_name()
+        return d
+
+
 fields_authors = "externalIds,name,affiliations"
 root_authors = f"semanticscholar/authors--{fields_authors.replace(',', '-')}"
 
 
-async def get_authors(paperId: str) -> dict:
+async def get_authors(paperId: str) -> Iterable[Author]:
     cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_AUTHORS')
     cache_days = cache_days if cache_days is not None else 300
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/authors?fields={fields_authors}"
     data = await download_item(url, os.path.join(root_authors, f"{paperId}.json"), cache_days)
     if not data or 'data' not in data:
-        return []
-    data = data['data']
-    return data
+        return
+    for a in data['data']:
+        yield SSAuthor(a)
 
 
 fields_references = f"title,year,authors,externalIds,publicationTypes,journal"
