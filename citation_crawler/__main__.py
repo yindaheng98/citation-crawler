@@ -8,11 +8,11 @@ class DefaultSemanticScholarCrawler(SemanticScholarCrawler):
         super().__init__(*args, **kwargs)
         self.keywords = keywords
 
-    def filter_papers(self, paperIds):
+    async def filter_papers(self, papers):
         """在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集"""
-        for paperId in paperIds:
-            if not self.keywords or self.keywords.match_words(self.papers[paperId]['title']):
-                yield paperId
+        async for paper in papers:
+            if not self.keywords or self.keywords.match_words(paper.title()):
+                yield paper
 
 
 async def main():

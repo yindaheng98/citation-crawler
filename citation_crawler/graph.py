@@ -1,7 +1,7 @@
 import abc
 import logging
 import asyncio
-from typing import Iterable, Tuple, Optional
+from typing import Iterable, Tuple, Optional, AsyncIterable
 
 from .items import Paper, Author
 
@@ -21,14 +21,14 @@ class Crawler(metaclass=abc.ABCMeta):
         return None
 
     @abc.abstractmethod
-    async def get_references(self, paper: Paper) -> Iterable[Paper]:
+    async def get_references(self, paper: Paper) -> AsyncIterable[Paper]:
         """获取某篇论文的引文"""
         return
 
     @abc.abstractmethod
-    def filter_papers(self, papers: Iterable[Paper]) -> Iterable[Paper]:
+    async def filter_papers(self, papers: AsyncIterable[Paper]) -> AsyncIterable[Paper]:
         """在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集"""
-        for paper in papers:
+        async for paper in papers:
             yield paper
 
     async def init_paper(self, paperId) -> Tuple[int, int]:
@@ -45,7 +45,7 @@ class Crawler(metaclass=abc.ABCMeta):
         self.papers[paperId] = paper
         if paperId in self.checked:
             return init, refs
-        async for new_paper in self.get_references(paper):
+        async for new_paper in self.filter_papers(self.get_references(paper)):
             if not new_paper:
                 continue
             new_paperId = new_paper.paperId()
@@ -69,11 +69,24 @@ class Crawler(metaclass=abc.ABCMeta):
 
 
 class Summarizer(metaclass=abc.ABCMeta):
-    def __init__(self) -> None:
-        pass
 
     @abc.abstractmethod
-    def filter_papers(self, papers: Iterable[dict]) -> Iterable[dict]:
+    def filter_papers(self, papers: Iterable[Paper]) -> Iterable[Paper]:
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
         for paper in papers:
             yield paper
+
+    @abc.abstractmethod
+    def write_paper(self, paper: Paper) -> None:
+        pass
+
+    @abc.abstractmethod
+    def write_reference(self, paper: Paper, reference: Paper) -> None:
+        pass
+
+    def write(self, crawler: Crawler) -> None:
+        for paper in crawler.papers.values():
+            self.write_paper(paper)
+        for paperId, refs_paperId in crawler.ref_idx.items():
+            for ref_paperId in refs_paperId:
+                self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
