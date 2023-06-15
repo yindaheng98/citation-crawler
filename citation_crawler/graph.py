@@ -1,7 +1,7 @@
 import abc
 import logging
 import asyncio
-from typing import Iterable, Tuple, Optional, AsyncIterable
+from typing import Any, Iterable, Tuple, Optional, AsyncIterable
 
 from .items import Paper, Author
 
@@ -71,22 +71,25 @@ class Crawler(metaclass=abc.ABCMeta):
 class Summarizer(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    def filter_papers(self, papers: Iterable[Paper]) -> Iterable[Paper]:
+    async def filter_papers(self, papers: AsyncIterable[Paper]) -> AsyncIterable[Paper]:
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        for paper in papers:
+        async for paper in papers:
             yield paper
 
     @abc.abstractmethod
-    def write_paper(self, paper: Paper) -> None:
+    async def write_paper(self, paper: Paper) -> None:
         pass
 
     @abc.abstractmethod
-    def write_reference(self, paper: Paper, reference: Paper) -> None:
+    async def write_reference(self, paper: Paper, reference: Paper) -> None:
         pass
 
-    def write(self, crawler: Crawler) -> None:
+    async def write(self, crawler: Crawler) -> None:
         for paper in crawler.papers.values():
-            self.write_paper(paper)
+            await self.write_paper(paper)
         for paperId, refs_paperId in crawler.ref_idx.items():
             for ref_paperId in refs_paperId:
-                self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
+                await self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
+
+    def __call__(self, crawler: Crawler) -> Any:
+        return self.write(crawler)
