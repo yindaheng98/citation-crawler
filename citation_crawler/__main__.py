@@ -1,7 +1,6 @@
 import asyncio
-from citation_crawler import Summarizer
-from citation_crawler.crawlers.ss import search_by_title, get_references
 from citation_crawler.crawlers import SemanticScholarCrawler
+from citation_crawler.summarizers import Neo4jSummarizer
 
 
 class DefaultSemanticScholarCrawler(SemanticScholarCrawler):
@@ -16,32 +15,29 @@ class DefaultSemanticScholarCrawler(SemanticScholarCrawler):
                 yield paper
 
 
-class PrintSummarizer(Summarizer):
-    def __init__(self) -> None:
-        super().__init__()
+class DefaultNeo4jSummarizer(Neo4jSummarizer):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
         async for paper in papers:
             yield paper
 
-    async def write_paper(self, paper) -> None:
-        print(paper.__dict__())
-
-    async def write_reference(self, paper, reference) -> None:
-        print(paper.paperId(), reference.paperId())
-
 
 async def main():
-    paperId = '247086a46f289035a5c74d758c359890a568f596'
+    paperId = '63b5a719fa2687aa43531efc2ee784b5516c6864'
     crawler = DefaultSemanticScholarCrawler(None, [paperId])
     print(await crawler.bfs_once())
     print(await crawler.bfs_once())
     for paper in crawler.papers.values():
         async for author in paper.authors():
             print(author.__dict__())
-    summarizer = PrintSummarizer()
-    await summarizer(crawler)
+    from neo4j import GraphDatabase
+    with GraphDatabase.driver('neo4j://10.128.201.131:7687') as driver:
+        with driver.session() as session:
+            summarizer = DefaultNeo4jSummarizer(session)
+            await summarizer(crawler)
 
 # asyncio.run(main()) # Wrong!
 loop = asyncio.get_event_loop()
