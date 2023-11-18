@@ -68,7 +68,7 @@ class Crawler(metaclass=abc.ABCMeta):
             total_init += init
             total_refs += refs
         logger.info("Initializing %s papers and %s refernces" % (total_init, total_refs))
-        return total_init + total_refs
+        return total_init, total_refs
 
 
 class Summarizer(metaclass=abc.ABCMeta):

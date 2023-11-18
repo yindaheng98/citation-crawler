@@ -27,7 +27,13 @@ def func_parser(parser):
     return year, keywords, pid_list
 
 
-async def filter_papers(papers, year, keywords):
+async def filter_papers_at_crawler(papers, year, keywords):
+    async for paper in papers:
+        if (paper.year() is None or paper.year() >= year) and keywords.match_words(paper.title()):
+            yield paper
+
+
+async def filter_papers_at_output(papers, year, keywords):
     async for paper in papers:
         if (paper.year() is None or paper.year() >= year) and keywords.match(paper.title()):
             yield paper
@@ -52,12 +58,11 @@ class DefaultSemanticScholarCrawler(SemanticScholarCrawler):
 
     async def filter_papers(self, papers):
         """在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集"""
-        async for paper in filter_papers(papers, self.year, self.keywords):
+        async for paper in filter_papers_at_crawler(papers, self.year, self.keywords):
             yield paper
 
 
 # --------- for NetworkxGraph ---------
-
 
 class DefaultNetworkxSummarizer(NetworkxSummarizer):
     def __init__(self, year, keywords, *args, **kwargs) -> None:
@@ -67,8 +72,28 @@ class DefaultNetworkxSummarizer(NetworkxSummarizer):
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        async for paper in filter_papers(papers, self.year, self.keywords):
+        async for paper in filter_papers_at_output(papers, self.year, self.keywords):
             yield paper
+
+
+parser_nx = subparsers.add_parser('networkx', help='Write results to a json file.')
+parser_nx.add_argument("--dest", type=str, required=True, help=f'Path to write results.')
+
+
+def func_parser_nx(parser):
+    year, keywords, pid_list = func_parser(parser)
+    args = parser.parse_args()
+    dest = args.dest
+    logger.info(f"Specified dest: {dest}")
+    crawler = DefaultSemanticScholarCrawler(year, keywords, pid_list)
+    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler))
+    summarizer = DefaultNetworkxSummarizer(year, keywords)
+    asyncio.get_event_loop().run_until_complete(summarizer(crawler))
+    asyncio.get_event_loop().run_until_complete(summarizer.save(dest))
+
+
+parser_nx.set_defaults(func=func_parser_nx)
+
 
 # --------- for Neo4jGraph ---------
 
@@ -81,30 +106,10 @@ class DefaultNeo4jSummarizer(Neo4jSummarizer):
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        async for paper in filter_papers(papers, self.year, self.keywords):
+        async for paper in filter_papers_at_output(papers, self.year, self.keywords):
             yield paper
 
 
-async def main():
-    from dblp_crawler.keyword import Keywords
-
-    keywords = Keywords()
-    keywords.add_rule("video")
-    paperId = '63b5a719fa2687aa43531efc2ee784b5516c6864'
-    crawler = DefaultSemanticScholarCrawler(2016, keywords, [paperId])
-    print(await crawler.bfs_once())
-    print(await crawler.bfs_once())
-    for paper in crawler.papers.values():
-        async for author in paper.authors():
-            print(author.__dict__())
-
-    keywords = Keywords()
-    keywords.add_rule("video", "streaming")
-    summarizer = DefaultNetworkxSummarizer(2016, keywords)
-    await summarizer(crawler)
-    await summarizer.save("summary.json")
-
-# asyncio.run(main()) # Wrong!
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
-loop.close()
+# --------- Run ---------
+args = parser.parse_args()
+args.func(parser)
