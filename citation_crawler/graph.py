@@ -1,9 +1,9 @@
 import abc
 import logging
 import asyncio
-from typing import Any, Iterable, Tuple, Optional, AsyncIterable
+from typing import Any, Tuple, Optional, AsyncIterable
 
-from .items import Paper, Author
+from .items import Paper
 
 
 logger = logging.getLogger("graph")
@@ -27,7 +27,10 @@ class Crawler(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def filter_papers(self, papers: AsyncIterable[Paper]) -> AsyncIterable[Paper]:
-        """在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集"""
+        """
+        在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集
+        等同于dblp-crawler里的filter_publications_at_crawler
+        """
         async for paper in papers:
             yield paper
 
@@ -72,7 +75,10 @@ class Summarizer(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def filter_papers(self, papers: AsyncIterable[Paper]) -> AsyncIterable[Paper]:
-        """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
+        """
+        在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中
+        等同于dblp-crawler里的filter_publications_at_output
+        """
         async for paper in papers:
             yield paper
 
@@ -84,12 +90,17 @@ class Summarizer(metaclass=abc.ABCMeta):
     async def write_reference(self, paper: Paper, reference: Paper) -> None:
         pass
 
+    @abc.abstractmethod
+    async def post_written(self) -> None:
+        pass
+
     async def write(self, crawler: Crawler) -> None:
         for paper in crawler.papers.values():
             await self.write_paper(paper)
         for paperId, refs_paperId in crawler.ref_idx.items():
             for ref_paperId in refs_paperId:
                 await self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
+        await self.post_written()
 
     def __call__(self, crawler: Crawler) -> Any:
         return self.write(crawler)

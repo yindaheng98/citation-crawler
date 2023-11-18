@@ -67,3 +67,6 @@ class Neo4jSummarizer(Summarizer):
 
     async def write_reference(self, paper, reference) -> None:
         self.session.execute_write(add_reference, paper, reference)
+
+    async def post_written(self) -> None:
+        pass
