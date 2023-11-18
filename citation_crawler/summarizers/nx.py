@@ -13,7 +13,7 @@ class NetworkxSummarizer(Summarizer):
     def __init__(self, jsonpath: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.path = jsonpath
-        self.graph: nx.MultiGraph = nx.MultiGraph()
+        self.graph: nx.Graph = nx.Graph()
 
     async def write_paper(self, paper) -> None:
         self.graph.add_node(paper.paperId(), paper=paper)

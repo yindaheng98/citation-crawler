@@ -29,7 +29,7 @@ def func_parser(parser):
 
 async def filter_papers(papers, year, keywords):
     async for paper in papers:
-        if paper.year() >= year and keywords.match(paper.title()):
+        if (paper.year() is None or paper.year() >= year) and keywords.match(paper.title()):
             yield paper
 
 
@@ -87,15 +87,15 @@ class DefaultNeo4jSummarizer(Neo4jSummarizer):
 async def main():
     from dblp_crawler.keyword import Keywords
     keywords = Keywords()
-    keywords.add_rule(".*")
+    keywords.add_rule("video")
     paperId = '63b5a719fa2687aa43531efc2ee784b5516c6864'
-    crawler = DefaultSemanticScholarCrawler(2020, keywords, [paperId])
+    crawler = DefaultSemanticScholarCrawler(2016, keywords, [paperId])
     print(await crawler.bfs_once())
     print(await crawler.bfs_once())
     for paper in crawler.papers.values():
         async for author in paper.authors():
             print(author.__dict__())
-    summarizer = DefaultNetworkxSummarizer(2020, keywords, "summary.json")
+    summarizer = DefaultNetworkxSummarizer(2016, keywords, "summary.json")
     await summarizer(crawler)
 
 # asyncio.run(main()) # Wrong!
