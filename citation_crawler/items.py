@@ -18,6 +18,8 @@ class Author(metaclass=abc.ABCMeta):
 
     def __dict__(self) -> dict:
         d = {}
+        if self.authorId():
+            d['authorId'] = self.authorId()
         if self.name():
             d['name'] = self.name()
         if self.dblp_pid():
@@ -48,11 +50,13 @@ class Paper(metaclass=abc.ABCMeta):
         return None
 
     @abc.abstractmethod
-    def authors(self) -> Iterable[Author]:
+    async def authors(self) -> Iterable[Author]:
         return
 
-    def __dict__(self) -> dict:
+    async def __dict__(self) -> dict:
         d = {}
+        if self.paperId():
+            d['paperId'] = self.paperId()
         if self.dblp_id():
             d['dblp_id'] = self.dblp_id()
         if self.title():
@@ -61,4 +65,7 @@ class Paper(metaclass=abc.ABCMeta):
             d['year'] = self.year()
         if self.doi():
             d['doi'] = self.doi()
+        d['authors'] = []
+        async for author in self.authors():
+            d['authors'].append(author.__dict__())
         return d
