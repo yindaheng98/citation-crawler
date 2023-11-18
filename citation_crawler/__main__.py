@@ -13,6 +13,7 @@ logger = logging.getLogger('citation_crawler')
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-y", "--year", type=int, help="Only crawl the paper after the specified year.", default=2000)
+parser.add_argument("-l", "--limit", type=int, help="Limitation of BFS depth.", default=-1)
 add_argument_kw(parser)
 add_argument_pid(parser)
 
@@ -20,27 +21,23 @@ add_argument_pid(parser)
 def func_parser(parser):
     args = parser.parse_args()
     year = args.year
+    limit = args.limit
     keywords = parse_args_kw(parser)
     pid_list = parse_args_pid(parser)
     logger.info(f"Specified keyword rules: {keywords.rules}")
     logger.info(f"Specified paperId list for init: {pid_list}")
-    return year, keywords, pid_list
+    logger.info(f"Specified BFS depth limitation: {limit}")
+    return year, keywords, pid_list, limit
 
 
 async def filter_papers_at_crawler(papers, year, keywords):
-    async for paper in papers:
-        if (paper.year() is None or paper.year() >= year) and keywords.match_words(paper.title()):
-            yield paper
-
-
-async def filter_papers_at_output(papers, year, keywords):
     async for paper in papers:
         if (paper.year() is None or paper.year() >= year) and keywords.match(paper.title()):
             yield paper
 
 
 async def bfs_to_end(graph, limit: int = 0):
-    while min(*(await graph.bfs_once())) > 0 and (limit != 0):
+    while max(*(await graph.bfs_once())) > 0 and (limit != 0):
         logger.info("Still running......")
         limit -= 1
 
@@ -65,14 +62,10 @@ class DefaultSemanticScholarCrawler(SemanticScholarCrawler):
 # --------- for NetworkxGraph ---------
 
 class DefaultNetworkxSummarizer(NetworkxSummarizer):
-    def __init__(self, year, keywords, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.year = year
-        self.keywords = keywords
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        async for paper in filter_papers_at_output(papers, self.year, self.keywords):
+        async for paper in papers:
             yield paper
 
 
@@ -81,13 +74,13 @@ parser_nx.add_argument("--dest", type=str, required=True, help=f'Path to write r
 
 
 def func_parser_nx(parser):
-    year, keywords, pid_list = func_parser(parser)
+    year, keywords, pid_list, limit = func_parser(parser)
     args = parser.parse_args()
     dest = args.dest
     logger.info(f"Specified dest: {dest}")
     crawler = DefaultSemanticScholarCrawler(year, keywords, pid_list)
-    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler))
-    summarizer = DefaultNetworkxSummarizer(year, keywords)
+    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
+    summarizer = DefaultNetworkxSummarizer()
     asyncio.get_event_loop().run_until_complete(summarizer(crawler))
     asyncio.get_event_loop().run_until_complete(summarizer.save(dest))
 
@@ -99,15 +92,32 @@ parser_nx.set_defaults(func=func_parser_nx)
 
 
 class DefaultNeo4jSummarizer(Neo4jSummarizer):
-    def __init__(self, year, keywords, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.year = year
-        self.keywords = keywords
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        async for paper in filter_papers_at_output(papers, self.year, self.keywords):
+        async for paper in papers:
             yield paper
+
+
+parser_n4j = subparsers.add_parser('neo4j', help='Write result to neo4j database')
+parser_n4j.add_argument("--auth", type=str, default=None, help=f'Auth to neo4j database.')
+parser_n4j.add_argument("--uri", type=str, required=True, help=f'URI to neo4j database.')
+
+
+def func_parser_n4j(parser):
+    from neo4j import GraphDatabase
+    year, keywords, pid_list, limit = func_parser(parser)
+    args = parser.parse_args()
+    logger.info(f"Specified uri and auth: {args.uri} {args.auth}")
+    crawler = DefaultSemanticScholarCrawler(year, keywords, pid_list)
+    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
+    with GraphDatabase.driver(args.uri, auth=args.auth) as driver:
+        with driver.session() as session:
+            summarizer = DefaultNeo4jSummarizer(session)
+            asyncio.get_event_loop().run_until_complete(summarizer(crawler))
+
+
+parser_n4j.set_defaults(func=func_parser_n4j)
 
 
 # --------- Run ---------

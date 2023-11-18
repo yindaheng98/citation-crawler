@@ -59,6 +59,7 @@ class Crawler(metaclass=abc.ABCMeta):
                 self.papers[new_paperId] = new_paper
                 refs += 1
         self.checked.add(paperId)
+        logger.info("There are %s refernces in %s" % (refs, paperId))
         return init, refs
 
     async def bfs_once(self) -> int:
@@ -67,7 +68,8 @@ class Crawler(metaclass=abc.ABCMeta):
         for init, refs in await asyncio.gather(*tasks):
             total_init += init
             total_refs += refs
-        logger.info("Initializing %s papers and %s refernces" % (total_init, total_refs))
+        logger.info("There are %d papers init in this loop" % total_init)
+        logger.info("There are %d refernces need init in next loop" % total_refs)
         return total_init, total_refs
 
 

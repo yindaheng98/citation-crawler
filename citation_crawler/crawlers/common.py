@@ -51,7 +51,7 @@ async def download_item(url: str, path: str, cache_days: int) -> Optional[Dict]:
             async with file_sem:
                 try:
                     async with async_open(save_path, 'r') as f:
-                        logger.info("use cache: %s -> %s" % (path, url))
+                        logger.debug("use cache: %s -> %s" % (path, url))
                         text = await f.read()
                         return json.loads(text)
                 except:
