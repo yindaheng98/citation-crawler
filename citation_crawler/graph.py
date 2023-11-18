@@ -90,17 +90,12 @@ class Summarizer(metaclass=abc.ABCMeta):
     async def write_reference(self, paper: Paper, reference: Paper) -> None:
         pass
 
-    @abc.abstractmethod
-    async def post_written(self) -> None:
-        pass
-
     async def write(self, crawler: Crawler) -> None:
         for paper in crawler.papers.values():
             await self.write_paper(paper)
         for paperId, refs_paperId in crawler.ref_idx.items():
             for ref_paperId in refs_paperId:
                 await self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
-        await self.post_written()
 
     def __call__(self, crawler: Crawler) -> Any:
         return self.write(crawler)

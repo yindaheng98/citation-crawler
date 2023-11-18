@@ -10,9 +10,8 @@ logger = logging.getLogger("graph")
 
 
 class NetworkxSummarizer(Summarizer):
-    def __init__(self, jsonpath: str, *args, **kwargs):
+    def __init__(self: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.path = jsonpath
         self.graph: nx.Graph = nx.Graph()
 
     async def write_paper(self, paper) -> None:
@@ -23,5 +22,5 @@ class NetworkxSummarizer(Summarizer):
         self.graph.add_node(reference.paperId(), paper=reference)
         self.graph.add_edge(paper.paperId(), reference.paperId())
 
-    async def post_written(self) -> None:
-        print(self.graph)  # TODO: 写入self.path
+    async def save(self, jsonpath) -> None:
+        print(self.graph)  # TODO: 写入jsonpath
