@@ -12,9 +12,6 @@ logger = logging.getLogger("graph")
 def add_paper(tx, paper: Paper):
     dblp_id = paper.dblp_id()
     doi = paper.doi()
-    if doi:
-        if not re.match(r"^https*://doi.org/", doi):
-            doi = "https://doi.org/" + doi
     if dblp_id and doi:
         tx.run("MERGE (p:Publication {key: $key}) "
                "ON CREATE SET p.title=$title, p.year=$year, p.doi=$doi",
@@ -42,8 +39,6 @@ def match_statement(p: Paper):
         return "MATCH ({n}:Publication {{key: ${n}}}) ", dblp_id
     doi = p.doi()
     if doi:
-        if not re.match(r"^https*://doi.org/", doi):
-            doi = "https://doi.org/" + doi
         return "MATCH ({n}:Publication {{doi: ${n}}}) ", doi
     return None, None
 

@@ -101,7 +101,11 @@ class SSPaper(Paper):
 
     def doi(self) -> Optional[str]:
         if 'externalIds' in self.data and 'DOI' in self.data['externalIds']:
-            return self.data['externalIds']['DOI']
+            doi = self.data['externalIds']['DOI']
+            if doi:
+                if not re.match(r"^https*://doi.org/", doi):
+                    doi = "https://doi.org/" + doi
+            return doi
 
     async def _get_authors_from_author_data(self) -> Iterable[Author]:
         if not self.author_data:
@@ -140,7 +144,7 @@ async def get_references(paperId: str) -> Iterable[SSPaper]:
         return
     data = data['data']
     for d in data:
-        if 'citedPaper' in d and 'paperId' in d['citedPaper'] and d['citedPaper']['paperId' ]:
+        if 'citedPaper' in d and 'paperId' in d['citedPaper'] and d['citedPaper']['paperId']:
             yield SSPaper(d['citedPaper'])
 
 
