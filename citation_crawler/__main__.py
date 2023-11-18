@@ -79,13 +79,15 @@ class DefaultNeo4jSummarizer(Neo4jSummarizer):
         self.year = year
         self.keywords = keywords
 
-    def filter_papers(self, papers):
+    async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        yield from filter_papers(papers, self.year, self.keywords)
+        async for paper in filter_papers(papers, self.year, self.keywords):
+            yield paper
 
 
 async def main():
     from dblp_crawler.keyword import Keywords
+
     keywords = Keywords()
     keywords.add_rule("video")
     paperId = '63b5a719fa2687aa43531efc2ee784b5516c6864'
@@ -95,6 +97,9 @@ async def main():
     for paper in crawler.papers.values():
         async for author in paper.authors():
             print(author.__dict__())
+
+    keywords = Keywords()
+    keywords.add_rule("video", "streaming")
     summarizer = DefaultNetworkxSummarizer(2016, keywords)
     await summarizer(crawler)
     await summarizer.save("summary.json")

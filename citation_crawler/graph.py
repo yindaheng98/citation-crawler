@@ -1,7 +1,7 @@
 import abc
 import logging
 import asyncio
-from typing import Any, Tuple, Optional, AsyncIterable
+from typing import Any, Tuple, Optional, Iterable, AsyncIterable
 
 from .items import Paper
 
@@ -91,10 +91,19 @@ class Summarizer(metaclass=abc.ABCMeta):
         pass
 
     async def write(self, crawler: Crawler) -> None:
-        for paper in crawler.papers.values():
+        exist_papers = set()
+        async def wrapper(iter: Iterable[Paper]):
+            for i in iter:
+                yield i
+        async for paper in self.filter_papers(wrapper(crawler.papers.values())):
             await self.write_paper(paper)
+            exist_papers.add(paper.paperId())
         for paperId, refs_paperId in crawler.ref_idx.items():
+            if paperId not in exist_papers:
+                continue
             for ref_paperId in refs_paperId:
+                if refs_paperId not in exist_papers:
+                    continue
                 await self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
 
     def __call__(self, crawler: Crawler) -> Any:
