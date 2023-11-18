@@ -1,4 +1,5 @@
 import logging
+import json
 from citation_crawler import Summarizer
 
 
@@ -22,5 +23,13 @@ class NetworkxSummarizer(Summarizer):
         self.graph.add_node(reference.paperId(), paper=reference)
         self.graph.add_edge(paper.paperId(), reference.paperId())
 
-    async def save(self, jsonpath) -> None:
-        print(self.graph)  # TODO: 写入jsonpath
+    def save(self, jsonpath) -> None:
+        nodes = {}
+        for k, d in self.graph.nodes(data=True):
+            if k not in nodes:
+                nodes[k] = d["paper"].__dict__()
+            else:
+                nodes[k] = {**nodes[k], **d["paper"].__dict__()}
+        edges = [(u, v) for u, v in self.graph.edges()]
+        with open(jsonpath, 'w', encoding="utf8") as f:
+            json.dump(dict(nodes=nodes, edges=edges), f, indent=2)

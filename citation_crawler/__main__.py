@@ -95,8 +95,9 @@ async def main():
     for paper in crawler.papers.values():
         async for author in paper.authors():
             print(author.__dict__())
-    summarizer = DefaultNetworkxSummarizer(2016, keywords, "summary.json")
+    summarizer = DefaultNetworkxSummarizer(2016, keywords)
     await summarizer(crawler)
+    summarizer.save("summary.json")
 
 # asyncio.run(main()) # Wrong!
 loop = asyncio.get_event_loop()
