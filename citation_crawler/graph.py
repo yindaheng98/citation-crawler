@@ -104,7 +104,7 @@ class Summarizer(metaclass=abc.ABCMeta):
             if paperId not in exist_papers:
                 continue
             for ref_paperId in refs_paperId:
-                if refs_paperId not in exist_papers:
+                if ref_paperId not in exist_papers:
                     continue
                 await self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
 

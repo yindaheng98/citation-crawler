@@ -10,46 +10,28 @@ logger = logging.getLogger("graph")
 
 
 def add_paper(tx, paper: Paper):
-    dblp_id = paper.dblp_id()
-    doi = paper.doi()
-    if dblp_id and doi:
-        tx.run("MERGE (p:Publication {key: $key}) "
-               "ON CREATE SET p.title=$title, p.year=$year, p.doi=$doi",
-               key=dblp_id,
-               title=paper.title(),
-               year=paper.year(),
-               doi=doi)
-    elif dblp_id:
-        tx.run("MERGE (p:Publication {key: $key}) "
-               "ON CREATE SET p.title=$title, p.year=$year",
-               key=dblp_id,
-               title=paper.title(),
-               year=paper.year())
-    elif doi:
-        tx.run("MERGE (p:Publication {doi: $doi}) "
-               "ON CREATE SET p.title=$title, p.year=$year",
-               doi=doi,
-               title=paper.title(),
-               year=paper.year())
-
-
-def match_statement(p: Paper):
-    dblp_id = p.dblp_id()
-    if dblp_id:
-        return "MATCH ({n}:Publication {{key: ${n}}}) ", dblp_id
-    doi = p.doi()
-    if doi:
-        return "MATCH ({n}:Publication {{doi: ${n}}}) ", doi
-    return None, None
+    n4jset = "MERGE (p:Publication {title_hash: $title_hash}) "\
+        "SET p.title=$title, p.year=$year"
+    if paper.doi():
+        n4jset += ", p.doi=$doi"
+    if paper.dblp_id():
+        n4jset += ", p.dblp_key=$dblp_id"
+    if paper.paperId():
+        n4jset += ", p.paperId=$paperId"
+    tx.run(n4jset,
+           title_hash=paper.title_hash(),
+           title=paper.title(),
+           year=paper.year(),
+           paperId=paper.paperId(),
+           dblp_id=paper.dblp_id(),
+           doi=paper.doi())
 
 
 def add_reference(tx, a: Paper, b: Paper):
-    sta, vla = match_statement(a)
-    stb, vlb = match_statement(b)
-    if sta is None or stb is None:
-        return
-    statement = sta.format(n='a') + stb.format(n='b') + "MERGE (a)-[:CITE]->(b)"
-    tx.run(statement, a=vla, b=vlb)
+    tx.run("MERGE (a:Publication {title_hash: $a}) "
+           "MERGE (b:Publication {title_hash: $b}) "
+           "MERGE (a)-[:CITE]->(b)",
+           a=a.title_hash(), b=b.title_hash())
 
 
 class Neo4jSummarizer(Summarizer):

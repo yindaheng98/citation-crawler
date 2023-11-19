@@ -1,4 +1,5 @@
 import abc
+import re
 from typing import Optional, Iterable
 
 
@@ -38,8 +39,11 @@ class Paper(metaclass=abc.ABCMeta):
         return None
 
     @abc.abstractmethod
-    def title(self) -> Optional[str]:
+    def title(self) -> str:
         return None
+
+    def title_hash(self) -> str:
+        return re.sub(r"[^0-9a-z]", "", self.title().lower())
 
     @abc.abstractmethod
     def year(self) -> Optional[int]:
@@ -58,9 +62,11 @@ class Paper(metaclass=abc.ABCMeta):
         if self.paperId():
             d['paperId'] = self.paperId()
         if self.dblp_id():
-            d['dblp_id'] = self.dblp_id()
+            d['dblp_key'] = self.dblp_id()
         if self.title():
             d['title'] = self.title()
+        if self.title_hash():
+            d['title_hash'] = self.title_hash()
         if self.year():
             d['year'] = self.year()
         if self.doi():
