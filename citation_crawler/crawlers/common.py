@@ -47,7 +47,7 @@ def get_cache_datetime(path) -> datetime:
 async def download_item(url: str, path: str, cache_days: int) -> Optional[Dict]:
     save_path = os.path.join("save", path)
     if os.path.isfile(save_path):
-        if datetime.now() < get_cache_datetime(save_path) + timedelta(days=cache_days):
+        if cache_days < 0 or datetime.now() < get_cache_datetime(save_path) + timedelta(days=cache_days):
             async with file_sem:
                 try:
                     async with async_open(save_path, 'r') as f:

@@ -66,7 +66,7 @@ root_authors = f"semanticscholar/authors--{fields_authors.replace(',', '-')}"
 
 async def get_authors(paperId: str) -> Iterable[Author]:
     cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_AUTHORS')
-    cache_days = cache_days if cache_days is not None else 300
+    cache_days = cache_days if cache_days is not None else -1
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/authors?fields={fields_authors}"
     data = await download_item(url, os.path.join(root_authors, f"{paperId}.json"), cache_days)
@@ -132,11 +132,12 @@ class SSPaper(Paper):
 
 fields_references = f"title,year,authors,externalIds,publicationTypes,journal"
 root_references = f"semanticscholar/references--{fields_references.replace(',', '-')}"
+root_citations = f"semanticscholar/citations--{fields_references.replace(',', '-')}"
 
 
 async def get_references(paperId: str) -> Iterable[SSPaper]:
     cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_REFERENCES')
-    cache_days = cache_days if cache_days is not None else 300
+    cache_days = cache_days if cache_days is not None else -1
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/references?fields={fields_references}"
     data = await download_item(url, os.path.join(root_references, f"{paperId}.json"), cache_days)
@@ -148,6 +149,20 @@ async def get_references(paperId: str) -> Iterable[SSPaper]:
             yield SSPaper(d['citedPaper'])
 
 
+async def get_citations(paperId: str) -> Iterable[SSPaper]:
+    cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_CITATIONS')
+    cache_days = cache_days if cache_days is not None else 7
+    paperId = paperId.lower()
+    url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/citations?fields={fields_references}"
+    data = await download_item(url, os.path.join(root_citations, f"{paperId}.json"), cache_days)
+    if not data or 'data' not in data:
+        return
+    data = data['data']
+    for d in data:
+        if 'citingPaper' in d and 'paperId' in d['citingPaper'] and d['citingPaper']['paperId']:
+            yield SSPaper(d['citingPaper'])
+
+
 fields_authors_sub = ','.join([("authors." + f) for f in fields_authors.split(',')])
 fields_paper = f"title,year,{fields_authors_sub},externalIds,publicationTypes,journal"
 root_paper = f"semanticscholar/paper--{fields_paper.replace(',', '-')}"
@@ -155,7 +170,7 @@ root_paper = f"semanticscholar/paper--{fields_paper.replace(',', '-')}"
 
 async def get_paper(paperId: str) -> Optional[SSPaper]:
     cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_PAPER')
-    cache_days = cache_days if cache_days is not None else 300
+    cache_days = cache_days if cache_days is not None else -1
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}?fields={fields_paper}"
     data = await download_item(url, os.path.join(root_paper, f"{paperId}.json"), cache_days)
@@ -171,4 +186,8 @@ class SemanticScholarCrawler(Crawler):
 
     async def get_references(self, paper):
         async for paper in get_references(paper.paperId()):
+            yield paper
+
+    async def get_citations(self, paper):
+        async for paper in get_citations(paper.paperId()):
             yield paper

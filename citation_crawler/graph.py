@@ -26,6 +26,11 @@ class Crawler(metaclass=abc.ABCMeta):
         return
 
     @abc.abstractmethod
+    async def get_citations(self, paper: Paper) -> AsyncIterable[Paper]:
+        """获取引用某篇论文的论文"""
+        return
+
+    @abc.abstractmethod
     async def filter_papers(self, papers: AsyncIterable[Paper]) -> AsyncIterable[Paper]:
         """
         在收集信息时过滤`Paper`，不会对被此方法过滤掉的`Paper`进行信息收集
@@ -35,11 +40,11 @@ class Crawler(metaclass=abc.ABCMeta):
             yield paper
 
     async def init_paper(self, paperId) -> Tuple[int, int]:
-        init, refs = 0, 0
+        init, refs, cits = 0, 0, 0
         if paperId not in self.papers or not self.papers[paperId]:
             paper = await self.get_paper(paperId)
             if not paper:
-                return init, refs
+                return init, refs, cits
             paperId = paper.paperId()
             init += 1
         else:
@@ -47,7 +52,8 @@ class Crawler(metaclass=abc.ABCMeta):
             paperId = paper.paperId()
         self.papers[paperId] = paper
         if paperId in self.checked:
-            return init, refs
+            return init, refs, cits
+
         async for new_paper in self.filter_papers(self.get_references(paper)):
             if not new_paper:
                 continue
@@ -58,19 +64,32 @@ class Crawler(metaclass=abc.ABCMeta):
             if new_paperId not in self.papers or not self.papers[new_paperId]:
                 self.papers[new_paperId] = new_paper
                 refs += 1
+
+        async for new_paper in self.filter_papers(self.get_citations(paper)):
+            if not new_paper:
+                continue
+            new_paperId = new_paper.paperId()
+            if new_paperId not in self.ref_idx:
+                self.ref_idx[new_paperId] = set()
+            self.ref_idx[new_paperId].add(paperId)
+            if new_paperId not in self.papers or not self.papers[new_paperId]:
+                self.papers[new_paperId] = new_paper
+                cits += 1
+
         self.checked.add(paperId)
-        logger.info("There are %s refernces in %s" % (refs, paperId))
-        return init, refs
+        logger.info("There are %s refernces and %s citations in %s" % (refs, cits, paperId))
+        return init, refs, cits
 
     async def bfs_once(self) -> int:
         tasks = [self.init_paper(paperId) for paperId in list(self.papers.keys())]
-        total_init, total_refs = 0, 0
-        for init, refs in await asyncio.gather(*tasks):
+        total_init, total_refs, total_cits = 0, 0, 0
+        for init, refs, cits in await asyncio.gather(*tasks):
             total_init += init
             total_refs += refs
+            total_cits += cits
         logger.info("There are %d papers init in this loop" % total_init)
-        logger.info("There are %d refernces need init in next loop" % total_refs)
-        return total_init, total_refs
+        logger.info("There are %d refernces and %d citations need init in next loop" % (total_refs, total_cits))
+        return total_init, total_refs, total_cits
 
 
 class Summarizer(metaclass=abc.ABCMeta):
@@ -94,6 +113,7 @@ class Summarizer(metaclass=abc.ABCMeta):
 
     async def write(self, crawler: Crawler) -> None:
         exist_papers = set()
+
         async def wrapper(iter: Iterable[Paper]):
             for i in iter:
                 yield i
