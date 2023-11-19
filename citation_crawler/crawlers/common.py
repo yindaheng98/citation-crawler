@@ -57,13 +57,13 @@ async def download_item(url: str, path: str, cache_days: int) -> Optional[Dict]:
                 except:
                     logger.debug(" no cache: %s" % save_path)
         else:
-            logger.info("old cache: %s" % save_path)
+            logger.debug("old cache: %s" % save_path)
 
     async with http_sem:
         try:
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
-                async with session.get(url) as response:
-                    logger.info(" download: %s <- %s" % (path, url))
+                async with session.get(url, proxy=os.getenv("HTTP_PROXY")) as response:
+                    logger.debug(" download: %s <- %s" % (path, url))
                     text = await response.text()
                     data = json.loads(text)
                     os.makedirs(os.path.dirname(save_path), exist_ok=True)
