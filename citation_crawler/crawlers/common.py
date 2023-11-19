@@ -10,9 +10,6 @@ from asyncio import Semaphore
 
 logger = logging.getLogger("common")
 
-http_sem = Semaphore(8)
-file_sem = Semaphore(512)
-
 
 def getenv_int(key) -> int:
     cache_days = os.getenv(key)
@@ -22,6 +19,11 @@ def getenv_int(key) -> int:
         except:
             pass
     return None
+
+
+http_concorent = getenv_int('HTTP_CONCORRENT')
+http_sem = Semaphore(http_concorent if http_concorent is not None else 8)
+file_sem = Semaphore(512)
 
 
 async def fetch_item(url: str) -> Optional[Dict]:
