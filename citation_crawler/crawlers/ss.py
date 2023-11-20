@@ -1,7 +1,7 @@
 import logging
 import re
 import os
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 from citation_crawler import Crawler, Author, Paper
 from .common import fetch_item, download_item, getenv_int
@@ -128,6 +128,13 @@ class SSPaper(Paper):
         else:
             async for author in self._get_authors_from_author_data():
                 yield author
+
+    async def authors_kv(self) -> Iterable[Tuple[str, str]]:
+        async for author in self.authors():
+            if author.dblp_pid():
+                yield "dblp_pid", author.dblp_pid()
+            if author.authorId():
+                yield "authorId", author.authorId()
 
 
 fields_references = f"title,year,authors,externalIds,publicationTypes,journal"

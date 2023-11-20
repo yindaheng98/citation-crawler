@@ -44,6 +44,15 @@ def match_corrlated_authors(tx, paper: Paper):
     return nodes
 
 
+def match_authors_kv(tx, k, v):
+    nodes = []
+    for record in tx.run("MATCH (a:Person {%s: $value}) RETURN a" % k,
+                         value=v):
+        for value in record.values():
+            nodes.append(value)
+    return nodes
+
+
 class Neo4jSummarizer(Summarizer):
     def __init__(self, session: Session, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -56,5 +65,13 @@ class Neo4jSummarizer(Summarizer):
         self.session.execute_write(add_reference, paper, reference)
 
     async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[Author]:
+        authors = set()
         for author in self.session.execute_read(match_corrlated_authors, paper):
-            yield author
+            if author["id"] not in authors:
+                yield author
+                authors.add(author["id"])
+        async for k, v in paper.authors_kv():
+            for author in self.session.execute_read(match_authors_kv, k, v):
+                if author["id"] not in authors:
+                    yield author
+                    authors.add(author["id"])
