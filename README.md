@@ -1,6 +1,6 @@
 # citation-crawler
 
-Asynchronous high-concurrency dblp crawler, use with caution!
+Asynchronous high-concurrency citation crawler, use with caution!
 
 异步高并发引文数据爬虫，慎用
 
@@ -8,13 +8,15 @@ Only support Semantic Scholar currently.
 
 目前支持从Semantic Scholar上爬references和citations
 
-Crawl papers from dblp and connect them into an undirected graph. Each edge is a paper, each node is an author.
+Crawl papers based on BFS(Breath First Search) from the citation network and connect them into an undirected graph. Each edge is a paper, each node is an author.
 
-爬引文数据并将其组织为无向图。图的节点是文章，边是引用关系
+基于广度优先搜索爬引文数据并将其组织为无向图。图的节点是文章，边是引用关系
 
 Neo4J output compatible with [dblp-crawler](https://github.com/yindaheng98/dblp-crawler)
 
-Neo4J形式的输出和[dblp-crawler](https://github.com/yindaheng98/dblp-crawler)兼容，可以自动识别同一个paper不产生重复节点
+Neo4J形式的输出和[dblp-crawler](https://github.com/yindaheng98/dblp-crawler)兼容，可以自动识别相同paper不产生重复节点，并可以匹配数据库中已记录的作者，从而为新加入数据库的paper连接作者
+
+![](asserts/graph.png)
 
 ## Install
 

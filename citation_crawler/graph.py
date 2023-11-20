@@ -100,12 +100,12 @@ class Crawler(metaclass=abc.ABCMeta):
 class Summarizer(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
-    async def filter_papers(self, papers: AsyncIterable[Paper]) -> AsyncIterable[Paper]:
+    async def filter_papers(self, papers: Iterable[Paper]) -> AsyncIterable[Paper]:
         """
         在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中
         等同于dblp-crawler里的filter_publications_at_output
         """
-        async for paper in papers:
+        for paper in papers:
             yield paper
 
     @abc.abstractmethod
@@ -125,11 +125,7 @@ class Summarizer(metaclass=abc.ABCMeta):
 
     async def write(self, crawler: Crawler) -> None:
         exist_papers = set()
-
-        async def wrapper(iter: Iterable[Paper]):
-            for i in iter:
-                yield i
-        async for paper in self.filter_papers(wrapper(crawler.papers.values())):
+        async for paper in self.filter_papers(crawler.papers.values()):
             await self.write_paper(paper)
             async for author_dict, write_fields in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
                 await self.write_author(paper, author_dict, write_fields)

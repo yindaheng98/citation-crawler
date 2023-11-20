@@ -65,7 +65,7 @@ class DefaultNetworkxSummarizer(NetworkxSummarizer):
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        async for paper in papers:
+        for paper in papers:
             yield paper
 
 
@@ -95,7 +95,7 @@ class DefaultNeo4jSummarizer(Neo4jSummarizer):
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        async for paper in papers:
+        for paper in papers:
             yield paper
 
 

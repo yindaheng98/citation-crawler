@@ -13,7 +13,7 @@ logger = logging.getLogger("graph")
 class NetworkxSummarizer(Summarizer):
     def __init__(self: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.graph: nx.Graph = nx.Graph()
+        self.graph: nx.DiGraph = nx.DiGraph()
 
     async def write_paper(self, paper) -> None:
         self.graph.add_node(paper.paperId(), paper=paper)
