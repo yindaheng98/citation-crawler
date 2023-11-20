@@ -1,6 +1,7 @@
 import logging
 import re
-from citation_crawler import Summarizer, Paper
+from typing import AsyncIterable
+from citation_crawler import Author, Summarizer, Paper
 
 from neo4j import Session
 
@@ -34,6 +35,15 @@ def add_reference(tx, a: Paper, b: Paper):
            a=a.title_hash(), b=b.title_hash())
 
 
+def match_corrlated_authors(tx, paper: Paper):
+    nodes = []
+    for record in tx.run("MATCH (a:Person)-[:WRITE]->(p:Publication {title_hash: $title_hash}) return a",
+                         title_hash=paper.title_hash()):
+        for value in record.values():
+            nodes.append(value)
+    return nodes
+
+
 class Neo4jSummarizer(Summarizer):
     def __init__(self, session: Session, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -44,3 +54,7 @@ class Neo4jSummarizer(Summarizer):
 
     async def write_reference(self, paper, reference) -> None:
         self.session.execute_write(add_reference, paper, reference)
+
+    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[Author]:
+        for author in self.session.execute_read(match_corrlated_authors, paper):
+            yield author
