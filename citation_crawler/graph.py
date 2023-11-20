@@ -3,7 +3,7 @@ import logging
 import asyncio
 from typing import Any, Tuple, Optional, Iterable, AsyncIterable
 
-from .items import Paper
+from .items import Paper, Author
 
 
 logger = logging.getLogger("graph")
@@ -38,6 +38,10 @@ class Crawler(metaclass=abc.ABCMeta):
         """
         async for paper in papers:
             yield paper
+
+    async def match_authors(self, paper: Paper, authors: AsyncIterable[Author]) -> AsyncIterable[Author]:
+        async for author in authors:
+            yield author
 
     async def init_paper(self, paperId) -> Tuple[int, int]:
         init, refs, cits = 0, 0, 0
@@ -111,6 +115,13 @@ class Summarizer(metaclass=abc.ABCMeta):
     async def write_reference(self, paper: Paper, reference: Paper) -> None:
         pass
 
+    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[Author]:
+        async for author in paper.authors():
+            yield author
+
+    async def write_author(self, paper: Paper, author: Author) -> None:
+        pass
+
     async def write(self, crawler: Crawler) -> None:
         exist_papers = set()
 
@@ -119,6 +130,8 @@ class Summarizer(metaclass=abc.ABCMeta):
                 yield i
         async for paper in self.filter_papers(wrapper(crawler.papers.values())):
             await self.write_paper(paper)
+            async for author in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
+                await self.write_author(paper, author)
             exist_papers.add(paper.paperId())
         for paperId, refs_paperId in crawler.ref_idx.items():
             if paperId not in exist_papers:
