@@ -199,15 +199,24 @@ class SemanticScholarCrawler(Crawler):
         async for paper in get_citations(paper.paperId()):
             yield paper
 
-    async def match_authors(self, paper: SSPaper, authors: AsyncIterable[Dict]) -> AsyncIterable[SSAuthor]:
-        dblp_names, authorIds = [], []
+    async def match_authors(self, paper: SSPaper, authors: AsyncIterable[Dict]) -> AsyncIterable[Tuple[Dict, Dict]]:
+        dblp_names, authorIds = {}, {}
         async for author in paper.authors():
             if author.dblp_name():
-                dblp_names.extend(author.dblp_name())
+                for name in author.dblp_name():
+                    dblp_names[name] = author
             if author.authorId():
-                authorIds.append(author.authorId())
+                authorIds[author.authorId()] = author
         async for author in authors:
             if 'name' in author and author['name'] in dblp_names:
-                yield author
+                ss_author = dblp_names[author['name']]
+                write_fields = {
+                    "authorId": ss_author.authorId()
+                }
+                yield author, write_fields
             elif 'authorId' in author and author['authorId'] in authorIds:
-                yield author
+                ss_author = authorIds[author['authorId']]
+                write_fields = {
+                    "authorId": ss_author.authorId()
+                }
+                yield author, write_fields

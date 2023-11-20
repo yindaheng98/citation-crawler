@@ -118,9 +118,9 @@ class Summarizer(metaclass=abc.ABCMeta):
 
     async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[Author]:
         async for author in paper.authors():
-            yield author
+            yield author.__dict__()
 
-    async def write_author(self, paper: Paper, author: Author) -> None:
+    async def write_author(self, paper: Paper, author_dict: dict, write_fields: dict) -> None:
         pass
 
     async def write(self, crawler: Crawler) -> None:
@@ -131,8 +131,8 @@ class Summarizer(metaclass=abc.ABCMeta):
                 yield i
         async for paper in self.filter_papers(wrapper(crawler.papers.values())):
             await self.write_paper(paper)
-            async for author in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
-                await self.write_author(paper, author)
+            async for author_dict, write_fields in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
+                await self.write_author(paper, author_dict, write_fields)
             exist_papers.add(paper.paperId())
         for paperId, refs_paperId in crawler.ref_idx.items():
             if paperId not in exist_papers:
