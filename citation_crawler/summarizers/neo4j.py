@@ -40,7 +40,7 @@ def match_corrlated_authors(tx, paper: Paper):
     for record in tx.run("MATCH (a:Person)-[:WRITE]->(p:Publication {title_hash: $title_hash}) return a",
                          title_hash=paper.title_hash()):
         for value in record.values():
-            nodes.append(value)
+            nodes.append({**dict(value), "element_id": value.element_id})
     return nodes
 
 
@@ -49,7 +49,7 @@ def match_authors_kv(tx, k, v):
     for record in tx.run("MATCH (a:Person {%s: $value}) RETURN a" % k,
                          value=v):
         for value in record.values():
-            nodes.append(value)
+            nodes.append({**dict(value), "element_id": value.element_id})
     return nodes
 
 
@@ -67,11 +67,15 @@ class Neo4jSummarizer(Summarizer):
     async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[Author]:
         authors = set()
         for author in self.session.execute_read(match_corrlated_authors, paper):
-            if author["id"] not in authors:
+            if author["element_id"] not in authors:
                 yield author
-                authors.add(author["id"])
+                authors.add(author["element_id"])
         async for k, v in paper.authors_kv():
             for author in self.session.execute_read(match_authors_kv, k, v):
-                if author["id"] not in authors:
+                if author["element_id"] not in authors:
                     yield author
-                    authors.add(author["id"])
+                    authors.add(author["element_id"])
+
+    async def write_author(self, paper: Paper, author: Author) -> None:
+        print(await paper.__dict__())
+        print(author)

@@ -39,6 +39,7 @@ class Crawler(metaclass=abc.ABCMeta):
         async for paper in papers:
             yield paper
 
+    @abc.abstractmethod
     async def match_authors(self, paper: Paper, authors: AsyncIterable[Author]) -> AsyncIterable[Author]:
         async for author in authors:
             yield author

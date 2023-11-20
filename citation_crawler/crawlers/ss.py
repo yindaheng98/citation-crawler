@@ -1,7 +1,7 @@
 import logging
 import re
 import os
-from typing import Iterable, Optional, Tuple
+from typing import AsyncIterable, Iterable, Optional, Tuple, Dict, List
 
 from citation_crawler import Crawler, Author, Paper
 from .common import fetch_item, download_item, getenv_int
@@ -45,7 +45,7 @@ class SSAuthor(Author):
     def dblp_pid(self) -> Optional[str]:
         return None
 
-    def dblp_name(self) -> Optional[str]:
+    def dblp_name(self) -> Optional[List[str]]:
         if 'externalIds' in self.data and 'DBLP' in self.data['externalIds']:
             return self.data['externalIds']['DBLP']
 
@@ -198,3 +198,16 @@ class SemanticScholarCrawler(Crawler):
     async def get_citations(self, paper):
         async for paper in get_citations(paper.paperId()):
             yield paper
+
+    async def match_authors(self, paper: SSPaper, authors: AsyncIterable[Dict]) -> AsyncIterable[SSAuthor]:
+        dblp_names, authorIds = [], []
+        async for author in paper.authors():
+            if author.dblp_name():
+                dblp_names.extend(author.dblp_name())
+            if author.authorId():
+                authorIds.append(author.authorId())
+        async for author in authors:
+            if 'name' in author and author['name'] in dblp_names:
+                yield author
+            elif 'authorId' in author and author['authorId'] in authorIds:
+                yield author
