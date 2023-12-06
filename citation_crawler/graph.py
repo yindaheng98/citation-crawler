@@ -1,6 +1,7 @@
 import abc
 import logging
 import asyncio
+from tqdm import tqdm
 from typing import Any, Tuple, Optional, Iterable, AsyncIterable
 
 from .items import Paper, Author
@@ -135,12 +136,12 @@ class Summarizer(metaclass=abc.ABCMeta):
 
     async def write(self, crawler: Crawler) -> None:
         exist_papers = set()
-        async for paper in self.filter_papers(crawler.papers.values()):
+        async for paper in self.filter_papers(tqdm(crawler.papers.values(), desc="Writing papers")):
             await self.write_paper(paper)
             async for author_dict, write_fields in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
                 await self.write_author(paper, author_dict, write_fields)
             exist_papers.add(paper.paperId())
-        for paperId, refs_paperId in crawler.ref_idx.items():
+        for paperId, refs_paperId in tqdm(crawler.ref_idx.items(), desc="Writing citations"):
             if paperId not in exist_papers:
                 continue
             for ref_paperId in refs_paperId:
