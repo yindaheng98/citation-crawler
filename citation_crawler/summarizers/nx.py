@@ -18,6 +18,14 @@ class NetworkxSummarizer(Summarizer):
     async def write_paper(self, paper) -> None:
         self.graph.add_node(paper.paperId(), paper=paper)
 
+    async def write_author(self, paper, author_dict, write_fields):
+        for _ in []:
+            yield None  # yet do not write author in networkx
+
+    async def get_corrlated_authors(self, paper):
+        for _ in []:
+            yield None  # yet do not write author in networkx
+
     async def write_reference(self, paper, reference) -> None:
         self.graph.add_node(paper.paperId(), paper=paper)
         self.graph.add_node(reference.paperId(), paper=reference)

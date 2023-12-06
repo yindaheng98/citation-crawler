@@ -47,9 +47,14 @@ class Crawler(metaclass=abc.ABCMeta):
             yield paper
 
     @abc.abstractmethod
-    async def match_authors(self, paper: Paper, authors: AsyncIterable[Author]) -> AsyncIterable[Author]:
+    async def match_authors(self, paper: Paper, authors: AsyncIterable[dict]) -> AsyncIterable[Tuple[dict, dict]]:
+        """
+        This function will be called after Summarizer.get_corrlated_authors
+        Return matched authors and the fields you want to write (in dict format)
+        用于将数据库中的作者与爬到的作者进行匹配
+        """
         async for author in authors:
-            yield author
+            yield author, author
 
     async def init_paper(self, paperId) -> Tuple[int, int]:
         init, refs, cits = 0, 0, 0
@@ -127,10 +132,16 @@ class Summarizer(metaclass=abc.ABCMeta):
     async def write_reference(self, paper: Paper, reference: Paper) -> None:
         pass
 
-    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[Author]:
+    @abc.abstractmethod
+    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[dict]:
+        """
+        Return existing authors (in dict format) of a paper in database
+        用于将数据库中的作者与爬到的作者进行匹配
+        """
         async for author in paper.authors():
             yield author.__dict__()
 
+    @abc.abstractmethod
     async def write_author(self, paper: Paper, author_dict: dict, write_fields: dict) -> None:
         pass
 
