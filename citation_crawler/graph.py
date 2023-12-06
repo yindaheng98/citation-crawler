@@ -12,7 +12,8 @@ logger = logging.getLogger("graph")
 
 class Crawler(metaclass=abc.ABCMeta):
     def __init__(self, paperId_list: list[str]) -> None:
-        self.papers: dict[str, Paper] = {paperId: None for paperId in paperId_list}
+        self._init_paper_list = paperId_list
+        self.papers: dict[str, Paper] = {}
         self.checked = set()
         self.ref_idx: dict[str, set[str]] = {}
         self.inited = False
@@ -100,7 +101,11 @@ class Crawler(metaclass=abc.ABCMeta):
     async def bfs_once(self) -> int:
         tasks = [self.init_paper(paperId) for paperId in list(self.papers.keys())]
         if not self.inited:
+            for paperId in self._init_paper_list:
+                logger.info("Init paper: %s" % paperId)
+                tasks.append(self.init_paper(paperId))
             async for paperId in self.get_init_paperIds():
+                logger.info("Init paper: %s" % paperId)
                 tasks.append(self.init_paper(paperId))
             self.inited = True
         total_init, total_refs, total_cits = 0, 0, 0
