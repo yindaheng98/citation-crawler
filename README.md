@@ -28,7 +28,7 @@ pip install citation-crawler
 
 ```sh
 python -m citation_crawler -h
-usage: __main__.py [-h] [-y YEAR] [-l LIMIT] -k KEYWORD [-p PID] {networkx,neo4j} ...
+usage: __main__.py [-h] [-y YEAR] [-l LIMIT] -k KEYWORD [-p PID] [-a AID] {networkx,neo4j} ...
 
 positional arguments:
   {networkx,neo4j}      sub-command help
@@ -43,6 +43,7 @@ optional arguments:
   -k KEYWORD, --keyword KEYWORD
                         Specify keyword rules.
   -p PID, --pid PID     Specified a list of paperId to start crawling.
+  -a AID, --aid AID     Specified a list of authorId to start crawling.
 ```
 
 ```sh
@@ -78,6 +79,9 @@ optional arguments:
 * `CITATION_CRAWLER_MAX_CACHE_DAYS_PAPER`
   * save cache for a paper detail page (to get details of a paper) for how many days
   * default: `-1` (cache forever, since detailed information of a published paper are not likely to change)
+* `CITATION_CRAWLER_MAX_CACHE_DAYS_INIT_AUTHOR`
+  * save cache for an author page (to init papers from specified author by `-a`) for how many days
+  * default: `7` (author may publish frequently)
 * `HTTP_PROXY`
   * Set it `http://your_user:your_password@your_proxy_url:your_proxy_port` if you want to use proxy
 * `HTTP_CONCORRENT`
@@ -89,7 +93,7 @@ optional arguments:
 e.g. write to `summary.json`:
 
 ```sh
-python -m citation_crawler -k video -k edge -p 27d5dc70280c8628f181a7f8881912025f808256 networkx --dest summary.json
+python -m citation_crawler -k video -k edge -p 27d5dc70280c8628f181a7f8881912025f808256 -a 1681457 networkx --dest summary.json
 ```
 
 #### JSON format
@@ -143,8 +147,18 @@ docker run --rm -it -p 7474:7474 -p 7687:7687 -v $(pwd)save/neo4j:/data -e NEO4J
 
 e.g. write to `neo4j://localhost:7687`:
 
-### Get the init paper list from a Neo4J database
+```sh
+python -m dblp_crawler -k video -k edge -p 27d5dc70280c8628f181a7f8881912025f808256 -a 1681457 neo4j --uri neo4j://localhost:7687
+```
+
+### Get initial paper list or author list from a Neo4J database
 
 ```sh
-python -m dblp_crawler -k video -k edge -p 27d5dc70280c8628f181a7f8881912025f808256 -a 1681457 networkx --dest summary.json
+python -m dblp_crawler -k video -k edge -a "importlib.import_module('citation_crawler.init').papers_in_neo4j('neo4j://localhost:7687')" neo4j --uri neo4j://localhost:7687
 ```
+
+```sh
+python -m dblp_crawler -k video -k edge -p "importlib.import_module('citation_crawler.init').authors_in_neo4j('neo4j://localhost:7687')" neo4j --uri neo4j://localhost:7687
+```
+
+`importlib.import_module` is flexible, you can import your own variables through this.
