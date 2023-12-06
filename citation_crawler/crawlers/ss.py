@@ -185,11 +185,13 @@ root_paper = f"semanticscholar/paper--{fields_paper.replace(',', '-')}"
 
 
 async def get_paper(paperId: str) -> Optional[SSPaper]:
+    def paperId2path(paperId):
+        return paperId.replace(":", "/")
     cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_PAPER')
     cache_days = cache_days if cache_days is not None else -1
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}?fields={fields_paper}"
-    data = await download_paper(url, os.path.join(root_paper, f"{paperId}.json"), cache_days)
+    data = await download_paper(url, os.path.join(root_paper, f"{paperId2path(paperId)}.json"), cache_days)
     if not data or 'paperId' not in data or data['paperId'].lower() != paperId:
         return None
     return SSPaper(data)
