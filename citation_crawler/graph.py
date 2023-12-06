@@ -14,6 +14,12 @@ class Crawler(metaclass=abc.ABCMeta):
         self.papers: dict[str, Paper] = {paperId: None for paperId in paperId_list}
         self.checked = set()
         self.ref_idx: dict[str, set[str]] = {}
+        self.inited = False
+
+    @abc.abstractmethod
+    async def get_init_paperIds(self) -> AsyncIterable[str]:
+        """初始化"""
+        return
 
     @abc.abstractmethod
     async def get_paper(self, paperId: str) -> Optional[Paper]:
@@ -87,6 +93,10 @@ class Crawler(metaclass=abc.ABCMeta):
 
     async def bfs_once(self) -> int:
         tasks = [self.init_paper(paperId) for paperId in list(self.papers.keys())]
+        if not self.inited:
+            async for paperId in self.get_init_paperIds():
+                tasks.append(self.init_paper(paperId))
+            self.inited = True
         total_init, total_refs, total_cits = 0, 0, 0
         for init, refs, cits in await asyncio.gather(*tasks):
             total_init += init

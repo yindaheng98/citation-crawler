@@ -186,7 +186,32 @@ async def get_paper(paperId: str) -> Optional[SSPaper]:
     return SSPaper(data)
 
 
+fields_author = "paperId,title"
+root_author = f"semanticscholar/author--{fields_author.replace(',', '-')}"
+
+
+async def get_paperIds_by_authorId(authorId: str) -> List[str]:
+    cache_days = getenv_int('CITATION_CRAWLER_MAX_CACHE_DAYS_INIT_AUTHOR')
+    cache_days = cache_days if cache_days is not None else 7
+    authorId = authorId.lower()
+    url = f"https://api.semanticscholar.org/graph/v1/author/{authorId}/papers?fields={fields_author}&limit=100"
+    data = await download_item(url, os.path.join(root_author, f"{authorId}.json"), cache_days)
+    if not data or 'data' not in data:
+        return
+    for paper in data['data']:
+        yield paper['paperId'].lower()
+
+
 class SemanticScholarCrawler(Crawler):
+
+    def __init__(self, authorId_list: list[str], *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.authors = authorId_list
+
+    async def get_init_paperIds(self):
+        for author in self.authors:
+            async for paperId in get_paperIds_by_authorId(author):
+                yield paperId
 
     async def get_paper(self, paperId):
         return await get_paper(paperId)
