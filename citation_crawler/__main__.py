@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from dblp_crawler.keyword.arg import add_argument as add_argument_kw, parse_args as parse_args_kw
-from citation_crawler.arg import add_argument_pid, parse_args_pid
+from citation_crawler.arg import add_argument_pid, add_argument_aid, parse_args_pid_author
 from citation_crawler.crawlers import SemanticScholarCrawler
 from citation_crawler.summarizers import NetworkxSummarizer, Neo4jSummarizer
 
@@ -16,6 +16,7 @@ parser.add_argument("-y", "--year", type=int, help="Only crawl the paper after t
 parser.add_argument("-l", "--limit", type=int, help="Limitation of BFS depth.", default=-1)
 add_argument_kw(parser)
 add_argument_pid(parser)
+add_argument_aid(parser)
 
 
 def func_parser(parser):
@@ -23,11 +24,12 @@ def func_parser(parser):
     year = args.year
     limit = args.limit
     keywords = parse_args_kw(parser)
-    pid_list = parse_args_pid(parser)
+    pid_list, aid_list = parse_args_pid_author(parser)
     logger.info(f"Specified keyword rules: {keywords.rules}")
     logger.info(f"Specified paperId list for init: {pid_list}")
+    logger.info(f"Specified authorId list for init: {aid_list}")
     logger.info(f"Specified BFS depth limitation: {limit}")
-    return year, keywords, pid_list, limit
+    return year, keywords, pid_list, aid_list, limit
 
 
 async def filter_papers_at_crawler(papers, year, keywords):
@@ -74,11 +76,11 @@ parser_nx.add_argument("--dest", type=str, required=True, help=f'Path to write r
 
 
 def func_parser_nx(parser):
-    year, keywords, pid_list, limit = func_parser(parser)
+    year, keywords, pid_list, aid_list, limit = func_parser(parser)
     args = parser.parse_args()
     dest = args.dest
     logger.info(f"Specified dest: {dest}")
-    crawler = DefaultSemanticScholarCrawler(year, keywords, pid_list)
+    crawler = DefaultSemanticScholarCrawler(year, keywords, aid_list, pid_list)
     asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
     summarizer = DefaultNetworkxSummarizer()
     asyncio.get_event_loop().run_until_complete(summarizer(crawler))
@@ -106,10 +108,10 @@ parser_n4j.add_argument("--uri", type=str, required=True, help=f'URI to neo4j da
 
 def func_parser_n4j(parser):
     from neo4j import GraphDatabase
-    year, keywords, pid_list, limit = func_parser(parser)
+    year, keywords, pid_list, aid_list, limit = func_parser(parser)
     args = parser.parse_args()
     logger.info(f"Specified uri and auth: {args.uri} {args.auth}")
-    crawler = DefaultSemanticScholarCrawler(year, keywords, pid_list)
+    crawler = DefaultSemanticScholarCrawler(year, keywords, aid_list, pid_list)
     asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
     with GraphDatabase.driver(args.uri, auth=args.auth) as driver:
         with driver.session() as session:

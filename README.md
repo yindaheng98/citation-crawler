@@ -143,6 +143,8 @@ docker run --rm -it -p 7474:7474 -p 7687:7687 -v $(pwd)save/neo4j:/data -e NEO4J
 
 e.g. write to `neo4j://localhost:7687`:
 
+### Get the init paper list from a Neo4J database
+
 ```sh
-python -m dblp_crawler -k video -k edge -p 27d5dc70280c8628f181a7f8881912025f808256 neo4j --uri neo4j://localhost:7687
+python -m dblp_crawler -k video -k edge -p 27d5dc70280c8628f181a7f8881912025f808256 -a 1681457 networkx --dest summary.json
 ```
