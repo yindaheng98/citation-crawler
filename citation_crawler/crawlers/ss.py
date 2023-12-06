@@ -46,7 +46,7 @@ async def download_list(url: str, path: str, cache_days: int):
         data = json.loads(text)
         if 'data' in data:
             return True
-        raise f"Invalid list data: {text}"
+        raise ValueError(f"Invalid list data: {text}")
     text = await download_item(url, path, cache_days, list_data_is_valid)
     if not text:
         return
@@ -172,7 +172,7 @@ async def download_paper(url: str, path: str, cache_days: int):
         data = json.loads(text)
         if 'paperId' in data:
             return True
-        raise f"Invalid paper data: {text}"
+        raise ValueError(f"Invalid paper data: {text}")
     text = await download_item(url, path, cache_days, paper_is_valid)
     if not text:
         return
@@ -180,7 +180,7 @@ async def download_paper(url: str, path: str, cache_days: int):
 
 
 fields_authors_sub = ','.join([("authors." + f) for f in fields_authors.split(',')])
-fields_paper = f"title,year,{fields_authors_sub},externalIds,publicationTypes,journal"
+fields_paper = f"title,year,publicationDate,{fields_authors_sub},externalIds,publicationTypes,journal"
 root_paper = f"semanticscholar/paper--{fields_paper.replace(',', '-')}"
 
 

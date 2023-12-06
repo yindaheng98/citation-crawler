@@ -1,9 +1,10 @@
 import logging
-import re
 from typing import AsyncIterable
 from citation_crawler import Author, Summarizer, Paper
 
+import dateutil.parser
 from neo4j import Session
+import neo4j.time
 
 '''Use with dblp-crawler'''
 
@@ -19,13 +20,26 @@ def add_paper(tx, paper: Paper):
         n4jset += ", p.dblp_key=$dblp_id"
     if paper.paperId():
         n4jset += ", p.paperId=$paperId"
+    date = None
+    if paper.date():
+        try:
+            _date = dateutil.parser.parse(paper.date())
+            date = neo4j.time.Date(
+                year=_date.year,
+                month=_date.month,
+                day=_date.day,
+            )
+            n4jset += ", p.date=$date"
+        except Exception as e:
+            logger.error(f"Cannot parse date {paper.date()}: {e}")
     tx.run(n4jset,
            title_hash=paper.title_hash(),
            title=paper.title(),
            year=paper.year(),
            paperId=paper.paperId(),
            dblp_id=paper.dblp_id(),
-           doi=paper.doi())
+           doi=paper.doi(),
+           date=date)
 
 
 def add_reference(tx, a: Paper, b: Paper):
