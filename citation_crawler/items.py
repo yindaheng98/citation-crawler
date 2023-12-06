@@ -50,6 +50,10 @@ class Paper(metaclass=abc.ABCMeta):
         return None
 
     @abc.abstractmethod
+    def date(self) -> Optional[str]:
+        return None
+
+    @abc.abstractmethod
     def doi(self) -> Optional[str]:
         return None
 
@@ -74,6 +78,8 @@ class Paper(metaclass=abc.ABCMeta):
             d['title_hash'] = self.title_hash()
         if self.year():
             d['year'] = self.year()
+        if self.date():
+            d['date'] = self.date()
         if self.doi():
             d['doi'] = self.doi()
         d['authors'] = []

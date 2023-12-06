@@ -1,32 +1,13 @@
 import logging
 import re
 import os
+import json
 from typing import AsyncIterable, Iterable, Optional, Tuple, Dict, List
 
 from citation_crawler import Crawler, Author, Paper
-from .common import fetch_item, download_item, getenv_int
+from .common import download_item, getenv_int
 
 logger = logging.getLogger("semanticscholar")
-
-
-async def search_by_title(title: str) -> str:
-    title = re.sub(r'\s+', ' ', title.lower().strip())
-    url = f"https://api.semanticscholar.org/graph/v1/paper/search?limit=1&query={title}"
-    data = await fetch_item(url)
-    if not data or 'data' not in data:
-        return None
-    data = data['data']
-    if len(data) <= 0:
-        return None
-    data = data[0]
-    if 'paperId'not in data or 'title'not in data:
-        return None
-    paperId = data['paperId']
-    data['title'] = re.sub(r'\s+', ' ', data['title'].lower().strip())
-    if data['title'] != title:
-        logger.info(f'"{data["title"]}" is not "{title}"')
-        return None
-    return paperId
 
 
 class SSAuthor(Author):
@@ -60,6 +41,18 @@ class SSAuthor(Author):
         return d
 
 
+async def download_list(url: str, path: str, cache_days: int):
+    def list_data_is_valid(text):
+        data = json.loads(text)
+        if 'data' in data:
+            return True
+        raise f"Invalid list data: {text}"
+    text = await download_item(url, path, cache_days, list_data_is_valid)
+    if not text:
+        return
+    return json.loads(text)
+
+
 fields_authors = "externalIds,name,affiliations"
 root_authors = f"semanticscholar/authors--{fields_authors.replace(',', '-')}"
 
@@ -69,7 +62,7 @@ async def get_authors(paperId: str) -> Iterable[Author]:
     cache_days = cache_days if cache_days is not None else -1
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/authors?fields={fields_authors}"
-    data = await download_item(url, os.path.join(root_authors, f"{paperId}.json"), cache_days)
+    data = await download_list(url, os.path.join(root_authors, f"{paperId}.json"), cache_days)
     if not data or 'data' not in data:
         return
     for a in data['data']:
@@ -98,6 +91,10 @@ class SSPaper(Paper):
     def year(self) -> Optional[int]:
         if 'year' in self.data:
             return self.data['year']
+
+    def date(self) -> Optional[int]:
+        if 'publicationDate' in self.data:
+            return self.data['publicationDate']
 
     def doi(self) -> Optional[str]:
         if 'externalIds' in self.data and 'DOI' in self.data['externalIds']:
@@ -147,7 +144,7 @@ async def get_references(paperId: str) -> Iterable[SSPaper]:
     cache_days = cache_days if cache_days is not None else -1
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/references?fields={fields_references}"
-    data = await download_item(url, os.path.join(root_references, f"{paperId}.json"), cache_days)
+    data = await download_list(url, os.path.join(root_references, f"{paperId}.json"), cache_days)
     if not data or 'data' not in data:
         return
     data = data['data']
@@ -161,13 +158,25 @@ async def get_citations(paperId: str) -> Iterable[SSPaper]:
     cache_days = cache_days if cache_days is not None else 7
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}/citations?fields={fields_references}"
-    data = await download_item(url, os.path.join(root_citations, f"{paperId}.json"), cache_days)
+    data = await download_list(url, os.path.join(root_citations, f"{paperId}.json"), cache_days)
     if not data or 'data' not in data:
         return
     data = data['data']
     for d in data:
         if 'citingPaper' in d and 'paperId' in d['citingPaper'] and d['citingPaper']['paperId']:
             yield SSPaper(d['citingPaper'])
+
+
+async def download_paper(url: str, path: str, cache_days: int):
+    def paper_is_valid(text):
+        data = json.loads(text)
+        if 'paperId' in data:
+            return True
+        raise f"Invalid paper data: {text}"
+    text = await download_item(url, path, cache_days, paper_is_valid)
+    if not text:
+        return
+    return json.loads(text)
 
 
 fields_authors_sub = ','.join([("authors." + f) for f in fields_authors.split(',')])
@@ -180,7 +189,7 @@ async def get_paper(paperId: str) -> Optional[SSPaper]:
     cache_days = cache_days if cache_days is not None else -1
     paperId = paperId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/paper/{paperId}?fields={fields_paper}"
-    data = await download_item(url, os.path.join(root_paper, f"{paperId}.json"), cache_days)
+    data = await download_paper(url, os.path.join(root_paper, f"{paperId}.json"), cache_days)
     if not data or 'paperId' not in data or data['paperId'].lower() != paperId:
         return None
     return SSPaper(data)
@@ -195,7 +204,7 @@ async def get_paperIds_by_authorId(authorId: str) -> List[str]:
     cache_days = cache_days if cache_days is not None else 7
     authorId = authorId.lower()
     url = f"https://api.semanticscholar.org/graph/v1/author/{authorId}/papers?fields={fields_author}&limit=100"
-    data = await download_item(url, os.path.join(root_author, f"{authorId}.json"), cache_days)
+    data = await download_list(url, os.path.join(root_author, f"{authorId}.json"), cache_days)
     if not data or 'data' not in data:
         return
     for paper in data['data']:

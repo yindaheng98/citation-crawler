@@ -1,7 +1,6 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 import os
 from datetime import datetime, timedelta
-import json
 
 import aiohttp
 import logging
@@ -26,27 +25,11 @@ http_sem = Semaphore(http_concorent if http_concorent is not None else 8)
 file_sem = Semaphore(512)
 
 
-async def fetch_item(url: str) -> Optional[Dict]:
-    async with http_sem:
-        try:
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
-                async with session.get(url) as response:
-                    logger.info("fetch url: %s" % url)
-                    text = await response.text()
-                    try:
-                        return json.loads(text)
-                    except Exception as e:
-                        logger.error(" json err: %s: %s" % (e, text))
-        except Exception as e:
-            logger.error("fetch err: %s" % e)
-    return None
-
-
 def get_cache_datetime(path) -> datetime:
     return datetime.fromtimestamp(os.path.getmtime(path))
 
 
-async def download_item(url: str, path: str, cache_days: int) -> Optional[Dict]:
+async def download_item(url: str, path: str, cache_days: int, is_valid: Callable[[str], None]) -> Optional[Dict]:
     save_path = os.path.join("save", path)
     if os.path.isfile(save_path):
         if cache_days < 0 or datetime.now() < get_cache_datetime(save_path) + timedelta(days=cache_days):
@@ -55,11 +38,18 @@ async def download_item(url: str, path: str, cache_days: int) -> Optional[Dict]:
                     async with async_open(save_path, 'r') as f:
                         logger.debug("use cache: %s -> %s" % (path, url))
                         text = await f.read()
-                        return json.loads(text)
+                    assert is_valid(text)
+                    return text
                 except:
                     logger.debug(" no cache: %s" % save_path)
+                    if os.path.exists(save_path):
+                        logger.info("err cache: %s" % save_path)
+                        try:
+                            os.remove(save_path)
+                        except Exception as e:
+                            logger.info(" rm cache: %s" % e)
         else:
-            logger.debug("old cache: %s" % save_path)
+            logger.info("old cache: %s" % save_path)
 
     async with http_sem:
         try:
@@ -67,11 +57,11 @@ async def download_item(url: str, path: str, cache_days: int) -> Optional[Dict]:
                 async with session.get(url, proxy=os.getenv("HTTP_PROXY")) as response:
                     logger.debug(" download: %s <- %s" % (path, url))
                     text = await response.text()
-                    data = json.loads(text)
+                    assert is_valid(text)
                     os.makedirs(os.path.dirname(save_path), exist_ok=True)
                     async with async_open(save_path, 'w') as f:
                         await f.write(text)
-                    return data
+                    return text
         except Exception as e:
             logger.error(" down err: %s" % e)
     return None
