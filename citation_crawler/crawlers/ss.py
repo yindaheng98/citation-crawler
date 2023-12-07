@@ -27,7 +27,7 @@ class SSAuthor(Author):
         return None
 
     def dblp_name(self) -> Optional[List[str]]:
-        if 'externalIds' in self.data and 'DBLP' in self.data['externalIds']:
+        if 'externalIds' in self.data and self.data['externalIds'] and 'DBLP' in self.data['externalIds']:
             return self.data['externalIds']['DBLP']
 
     def __dict__(self) -> dict:
