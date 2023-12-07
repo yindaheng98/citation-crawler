@@ -31,6 +31,7 @@ setup(
     ],
     install_requires=[
         'dblp-crawler>=1.6.7',
-        'dateutil>=2.8.2'
+        'dateutil>=2.8.2',
+        'neo4j>=5.15.0'
     ],
 )
