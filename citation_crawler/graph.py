@@ -147,15 +147,15 @@ class Summarizer(metaclass=abc.ABCMeta):
             yield author.__dict__()
 
     @abc.abstractmethod
-    async def write_author(self, paper: Paper, author_dict: dict, write_fields: dict) -> None:
+    async def write_author(self, paper: Paper, author_kv: dict, write_fields: dict) -> None:
         pass
 
     async def write(self, crawler: Crawler) -> None:
         exist_papers = set()
         async for paper in self.filter_papers(tqdm(crawler.papers.values(), desc="Writing papers")):
             await self.write_paper(paper)
-            async for author_dict, write_fields in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
-                await self.write_author(paper, author_dict, write_fields)
+            async for author_kv, write_fields in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
+                await self.write_author(paper, author_kv, write_fields)
             exist_papers.add(paper.paperId())
         for paperId, refs_paperId in tqdm(crawler.ref_idx.items(), desc="Writing citations"):
             if paperId not in exist_papers:

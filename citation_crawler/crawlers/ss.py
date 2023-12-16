@@ -3,6 +3,7 @@ import re
 import os
 import json
 from typing import AsyncIterable, Iterable, Optional, Tuple, Dict, List
+from urllib.parse import urlparse
 
 from citation_crawler import Crawler, Author, Paper
 from .common import download_item, getenv_int
@@ -99,9 +100,8 @@ class SSPaper(Paper):
     def doi(self) -> Optional[str]:
         if 'externalIds' in self.data and 'DOI' in self.data['externalIds']:
             doi = self.data['externalIds']['DOI']
-            if doi:
-                if not re.match(r"^https*://doi.org/", doi):
-                    doi = "https://doi.org/" + doi
+            u = urlparse(doi)
+            doi = re.sub(r"^/+", "", u.path)
             return doi
 
     async def _get_authors_from_author_data(self) -> Iterable[Author]:
@@ -244,15 +244,17 @@ class SemanticScholarCrawler(Crawler):
             if author.authorId():
                 authorIds[author.authorId()] = author
         async for author in authors:
-            if 'name' in author and author['name'] in dblp_names:
+            if 'authorId' in author:
+                if author['authorId'] in authorIds:
+                    write_fields = {}
+                    author_kv = {"authorId": author['authorId']}
+                    yield author_kv, write_fields
+                else:  # if there is an author in database but is not really an author
+                    # should unlink the author
+                    author_kv = {"authorId": author['authorId']}
+                    # yield author_kv, {}, True
+            elif 'name' in author and author['name'] in dblp_names:
                 ss_author = dblp_names[author['name']]
-                write_fields = {
-                    "authorId": ss_author.authorId()
-                }
-                yield author, write_fields
-            elif 'authorId' in author and author['authorId'] in authorIds:
-                ss_author = authorIds[author['authorId']]
-                write_fields = {
-                    "authorId": ss_author.authorId()
-                }
-                yield author, write_fields
+                write_fields = {"authorId": ss_author.authorId()}
+                author_kv = {"dblp_pid": author["dblp_pid"]}
+                yield author_kv, write_fields

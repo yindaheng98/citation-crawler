@@ -67,16 +67,19 @@ def match_authors_kv(tx, k, v):
     return nodes
 
 
-def change_author(tx, author, write_fields):
-    tx.run("MERGE (a:Person {dblp_pid: $dblp_pid}) SET %s" % (",".join([f"a.{k}=${k}" for k in write_fields])),
-           dblp_pid=author["dblp_pid"], **write_fields)
+def change_author(tx, author_kv, write_fields):
+    if len(write_fields) <= 0:
+        return
+    tx.run(('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
+           f'SET {",".join([f"a.{k}=${k}" for k in write_fields])}',
+           **author_kv, **write_fields)
 
 
-def link_author(tx, paper: Paper, author):
-    tx.run("MERGE (p:Publication {title_hash: $title_hash}) "
-           "MERGE (a:Person {dblp_pid: $dblp_pid}) "
-           "MERGE (a)-[:WRITE]->(b)",
-           title_hash=paper.title_hash(), dblp_pid=author["dblp_pid"])
+def link_author(tx, paper: Paper, author_kv):
+    tx.run("MERGE (p:Publication {title_hash: $title_hash}) " +
+           ('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
+           " MERGE (a)-[:WRITE]->(b)",
+           title_hash=paper.title_hash(), **author_kv)
 
 
 class Neo4jSummarizer(Summarizer):
@@ -102,6 +105,6 @@ class Neo4jSummarizer(Summarizer):
                     yield author
                     authors.add(author["element_id"])
 
-    async def write_author(self, paper: Paper, author_dict, write_fields) -> None:
-        self.session.execute_write(change_author, author_dict, write_fields)
-        self.session.execute_write(link_author, paper, author_dict)
+    async def write_author(self, paper: Paper, author_kv, write_fields) -> None:
+        self.session.execute_write(change_author, author_kv, write_fields)
+        self.session.execute_write(link_author, paper, author_kv)
