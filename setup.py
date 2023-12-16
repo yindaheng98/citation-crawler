@@ -15,7 +15,7 @@ package_dir = {
 
 setup(
     name='citation_crawler',
-    version='1.7.3.1',
+    version='1.7.4',
     author='yindaheng98',
     author_email='yindaheng98@gmail.com',
     url='https://github.com/yindaheng98/citation-crawler',
@@ -30,7 +30,7 @@ setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        'dblp-crawler>=1.6.7',
+        'dblp-crawler>=1.8.16',
         'dateutil>=2.8.2',
         'neo4j>=5.15.0'
     ],

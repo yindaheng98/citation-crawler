@@ -1,1 +1,3 @@
-dblp-crawler
+dblp-crawler>=1.8.16
+dateutil>=2.8.2
+neo4j>=5.15.0
