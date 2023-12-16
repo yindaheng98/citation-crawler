@@ -235,7 +235,7 @@ class SemanticScholarCrawler(Crawler):
         async for paper in get_citations(paper.paperId()):
             yield paper
 
-    async def match_authors(self, paper: SSPaper, authors: AsyncIterable[Dict]) -> AsyncIterable[Tuple[Dict, Dict]]:
+    async def match_authors(self, paper: SSPaper, authors: AsyncIterable[Dict]) -> AsyncIterable[Tuple[Dict, Dict, bool]]:
         dblp_names, authorIds = {}, {}
         async for author in paper.authors():
             if author.dblp_name():
@@ -248,13 +248,16 @@ class SemanticScholarCrawler(Crawler):
                 if author['authorId'] in authorIds:
                     write_fields = {}
                     author_kv = {"authorId": author['authorId']}
-                    yield author_kv, write_fields
+                    yield author_kv, write_fields, None
                 else:  # if there is an author in database but is not really an author
                     # should unlink the author
-                    author_kv = {"authorId": author['authorId']}
-                    # yield author_kv, {}, True
+                    division_kv = {"authorId": author['authorId']}
+                    if 'name' in author and author['name'] in dblp_names:
+                        ss_author = dblp_names[author['name']]
+                        author_kv = {"authorId": ss_author.authorId()}
+                        yield author_kv, {}, division_kv
             elif 'name' in author and author['name'] in dblp_names:
                 ss_author = dblp_names[author['name']]
                 write_fields = {"authorId": ss_author.authorId()}
                 author_kv = {"dblp_pid": author["dblp_pid"]}
-                yield author_kv, write_fields
+                yield author_kv, write_fields, None

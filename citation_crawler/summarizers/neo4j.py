@@ -67,19 +67,26 @@ def match_authors_kv(tx, k, v):
     return nodes
 
 
-def change_author(tx, author_kv, write_fields):
-    if len(write_fields) <= 0:
-        return
-    tx.run(('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
-           f'SET {",".join([f"a.{k}=${k}" for k in write_fields])}',
-           **author_kv, **write_fields)
-
-
-def link_author(tx, paper: Paper, author_kv):
+def link_author(tx, paper: Paper, author_kv, write_fields):
     tx.run("MERGE (p:Publication {title_hash: $title_hash}) " +
            ('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
+           (f'SET {",".join([f"a.{k}=${k}" for k in write_fields])}' if len(write_fields) > 0 else "") +
+           " MERGE (a)-[:WRITE]->(p)",
+           title_hash=paper.title_hash(), **author_kv, **write_fields)
+
+
+def divide_author(tx, paper: Paper, author_kv, write_fields, division_kv):
+    author_c = tx.run("MATCH (c:Person {%s}) RETURN c" % (",".join([f'{k}: ${k}' for k in division_kv])),
+                      **division_kv).values()[0][0]._properties
+    tx.run("MATCH (c:Person {%s})-[r:WRITE]->(p:Publication {title_hash: $title_hash}) "
+           "DELETE r" % (",".join([f'{k}: ${k}' for k in division_kv])),
+           title_hash=paper.title_hash(), **division_kv)
+    write_fields = {**author_c, **write_fields, **author_kv}
+    tx.run("MERGE (p:Publication {title_hash: $title_hash}) " +
+           ('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
+           (f'SET {",".join([f"a.{k}=${k}" for k in write_fields])}' if len(write_fields) > 0 else "") +
            " MERGE (a)-[:WRITE]->(b)",
-           title_hash=paper.title_hash(), **author_kv)
+           title_hash=paper.title_hash(), **write_fields)
 
 
 class Neo4jSummarizer(Summarizer):
@@ -105,6 +112,7 @@ class Neo4jSummarizer(Summarizer):
                     yield author
                     authors.add(author["element_id"])
 
-    async def write_author(self, paper: Paper, author_kv, write_fields) -> None:
-        self.session.execute_write(change_author, author_kv, write_fields)
-        self.session.execute_write(link_author, paper, author_kv)
+    async def write_author(self, paper: Paper, author_kv, write_fields, division_kv) -> None:
+        if division_kv:
+            self.session.execute_write(divide_author, paper, author_kv, write_fields, division_kv)
+        self.session.execute_write(link_author, paper, author_kv, write_fields)

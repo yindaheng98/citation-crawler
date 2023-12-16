@@ -48,7 +48,7 @@ class Crawler(metaclass=abc.ABCMeta):
             yield paper
 
     @abc.abstractmethod
-    async def match_authors(self, paper: Paper, authors: AsyncIterable[dict]) -> AsyncIterable[Tuple[dict, dict]]:
+    async def match_authors(self, paper: Paper, authors: AsyncIterable[dict]) -> AsyncIterable[Tuple[dict, dict, bool]]:
         """
         This function will be called after Summarizer.get_corrlated_authors
         Return matched authors and the fields you want to write (in dict format)
@@ -147,15 +147,15 @@ class Summarizer(metaclass=abc.ABCMeta):
             yield author.__dict__()
 
     @abc.abstractmethod
-    async def write_author(self, paper: Paper, author_kv: dict, write_fields: dict) -> None:
+    async def write_author(self, paper: Paper, author_kv: dict, write_fields: dict, division_kv: bool) -> None:
         pass
 
     async def write(self, crawler: Crawler) -> None:
         exist_papers = set()
         async for paper in self.filter_papers(tqdm(crawler.papers.values(), desc="Writing papers")):
             await self.write_paper(paper)
-            async for author_kv, write_fields in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
-                await self.write_author(paper, author_kv, write_fields)
+            async for author_kv, write_fields, division_kv in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
+                await self.write_author(paper, author_kv, write_fields, division_kv)
             exist_papers.add(paper.paperId())
         for paperId, refs_paperId in tqdm(crawler.ref_idx.items(), desc="Writing citations"):
             if paperId not in exist_papers:

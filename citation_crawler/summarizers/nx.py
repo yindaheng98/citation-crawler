@@ -18,7 +18,7 @@ class NetworkxSummarizer(Summarizer):
     async def write_paper(self, paper) -> None:
         self.graph.add_node(paper.paperId(), paper=paper)
 
-    async def write_author(self, paper, author_dict, write_fields):
+    async def write_author(self, paper, author_dict, write_fields, division):
         for _ in []:
             yield None  # yet do not write author in networkx
 
