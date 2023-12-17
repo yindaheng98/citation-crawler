@@ -3,6 +3,7 @@ import logging
 import asyncio
 from tqdm import tqdm
 from typing import Any, Tuple, Optional, Iterable, AsyncIterable
+import random
 
 from .items import Paper
 
@@ -145,6 +146,7 @@ class Crawler(metaclass=abc.ABCMeta):
             self.fetched.add(paperId)
             logger.info("Init paper: %s" % paperId)
             tasks.append(self.init_paper(paperId))
+        random.shuffle(tasks)
         for paper, news in tqdm(await asyncio.gather(*tasks), desc="Writing init papers"):
             yield paper, news
 
@@ -167,6 +169,7 @@ class Crawler(metaclass=abc.ABCMeta):
 
         # 执行fetch论文
         tasks = [self.init_paper(paperId) for paperId in paperIds]
+        random.shuffle(tasks)
         for paper, news in tqdm(await asyncio.gather(*tasks), desc="Writing papers"):
             if isinstance(paper, Paper):
                 yield paper, news
