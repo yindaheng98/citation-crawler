@@ -4,7 +4,7 @@ import asyncio
 from tqdm import tqdm
 from typing import Any, Tuple, Optional, Iterable, AsyncIterable
 
-from .items import Paper, Author
+from .items import Paper
 
 
 logger = logging.getLogger("graph")
@@ -91,12 +91,12 @@ class Crawler(metaclass=abc.ABCMeta):
         async for author in authors:
             yield author, author
 
-    async def init_paper(self, paperId) -> Tuple[Paper, int]:
+    async def init_paper(self, paperId) -> Tuple[Optional[Paper], int]:
         # fetch论文
         if paperId not in self.papers:  # init时self.papers里肯定没有数据
             paper = await self.get_paper(paperId)
             if not isinstance(paper, Paper):
-                return None, 0, 0
+                return None, 0
             paperId = paper.paperId()
         else:  # init之后的文章肯定作为references或citations已经下载过了
             paper = self.papers[paperId]
@@ -145,7 +145,7 @@ class Crawler(metaclass=abc.ABCMeta):
             self.fetched.add(paperId)
             logger.info("Init paper: %s" % paperId)
             tasks.append(self.init_paper(paperId))
-        for paper, news in await asyncio.gather(*tasks):
+        for paper, news in tqdm(await asyncio.gather(*tasks), desc="Writing init papers"):
             yield paper, news
 
     async def _bfs_once(self) -> int:
@@ -167,7 +167,7 @@ class Crawler(metaclass=abc.ABCMeta):
 
         # 执行fetch论文
         tasks = [self.init_paper(paperId) for paperId in paperIds]
-        for paper, news in await asyncio.gather(*tasks):
+        for paper, news in tqdm(await asyncio.gather(*tasks), desc="Writing papers"):
             if isinstance(paper, Paper):
                 yield paper, news
 

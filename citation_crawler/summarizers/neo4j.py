@@ -1,6 +1,6 @@
 import logging
 from typing import AsyncIterable
-from citation_crawler import Author, Summarizer, Paper
+from citation_crawler import Summarizer, Paper
 
 import dateutil.parser
 from neo4j import Session
@@ -100,7 +100,7 @@ class Neo4jSummarizer(Summarizer):
     async def write_reference(self, paper, reference) -> None:
         self.session.execute_write(add_reference, paper, reference)
 
-    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[Author]:
+    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[dict]:
         authors = set()
         for author in self.session.execute_read(match_corrlated_authors, paper):
             if author["element_id"] not in authors:
