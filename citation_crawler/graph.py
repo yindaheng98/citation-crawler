@@ -10,11 +10,45 @@ from .items import Paper, Author
 logger = logging.getLogger("graph")
 
 
+class Summarizer(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    async def filter_papers(self, papers: AsyncIterable[Paper]) -> AsyncIterable[Paper]:
+        """
+        在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中
+        等同于dblp-crawler里的filter_publications_at_output
+        """
+        async for paper in papers:
+            yield paper
+
+    @abc.abstractmethod
+    async def write_paper(self, paper: Paper) -> None:
+        pass
+
+    @abc.abstractmethod
+    async def write_reference(self, paper: Paper, reference: Paper) -> None:
+        pass
+
+    @abc.abstractmethod
+    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[dict]:
+        """
+        Return existing authors (in dict format) of a paper in database
+        用于将数据库中的作者与爬到的作者进行匹配
+        """
+        async for author in paper.authors():
+            yield author.__dict__()
+
+    @abc.abstractmethod
+    async def write_author(self, paper: Paper, author_kv: dict, write_fields: dict, division_kv: bool) -> None:
+        pass
+
+
 class Crawler(metaclass=abc.ABCMeta):
-    def __init__(self, paperId_list: list[str]) -> None:
+    def __init__(self, summarizer: Summarizer, paperId_list: list[str]) -> None:
+        self.summarizer = summarizer
         self._init_paper_list = paperId_list
         self.papers: dict[str, Paper] = {}
-        self.checked = set()
+        self.fetched = set()
         self.ref_idx: dict[str, set[str]] = {}
         self.inited = False
 
@@ -57,21 +91,20 @@ class Crawler(metaclass=abc.ABCMeta):
         async for author in authors:
             yield author, author
 
-    async def init_paper(self, paperId) -> Tuple[int, int]:
-        init, refs, cits = 0, 0, 0
-        if paperId not in self.papers or not self.papers[paperId]:
+    async def init_paper(self, paperId) -> Tuple[Paper, int]:
+        # fetch论文
+        if paperId not in self.papers:  # init时self.papers里肯定没有数据
             paper = await self.get_paper(paperId)
-            if not paper:
-                return init, refs, cits
+            if not isinstance(paper, Paper):
+                return None, 0, 0
             paperId = paper.paperId()
-            init += 1
-        else:
+        else:  # init之后的文章肯定作为references或citations已经下载过了
             paper = self.papers[paperId]
             paperId = paper.paperId()
         self.papers[paperId] = paper
-        if paperId in self.checked:
-            return init, refs, cits
 
+        # fetch references
+        refs, cits = 0, 0
         async for new_paper in self.filter_papers(self.get_references(paper)):
             if not new_paper:
                 continue
@@ -83,6 +116,7 @@ class Crawler(metaclass=abc.ABCMeta):
                 self.papers[new_paperId] = new_paper
                 refs += 1
 
+        # fetch citations
         async for new_paper in self.filter_papers(self.get_citations(paper)):
             if not new_paper:
                 continue
@@ -94,76 +128,68 @@ class Crawler(metaclass=abc.ABCMeta):
                 self.papers[new_paperId] = new_paper
                 cits += 1
 
-        self.checked.add(paperId)
         logger.info("There are %s refernces and %s citations in %s" % (refs, cits, paperId))
-        return init, refs, cits
+        return paper, refs + cits
 
-    async def bfs_once(self) -> int:
-        tasks = [self.init_paper(paperId) for paperId in list(self.papers.keys())]
-        if not self.inited:
-            for paperId in self._init_paper_list:
-                logger.info("Init paper: %s" % paperId)
-                tasks.append(self.init_paper(paperId))
-            async for paperId in self.get_init_paperIds():
-                logger.info("Init paper: %s" % paperId)
-                tasks.append(self.init_paper(paperId))
-            self.inited = True
-        total_init, total_refs, total_cits = 0, 0, 0
-        for init, refs, cits in await asyncio.gather(*tasks):
-            total_init += init
-            total_refs += refs
-            total_cits += cits
-        logger.info("There are %d papers init in this loop" % total_init)
-        logger.info("There are %d refernces and %d citations need init in next loop" % (total_refs, total_cits))
-        return total_init, total_refs, total_cits
-
-
-class Summarizer(metaclass=abc.ABCMeta):
-
-    @abc.abstractmethod
-    async def filter_papers(self, papers: Iterable[Paper]) -> AsyncIterable[Paper]:
-        """
-        在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中
-        等同于dblp-crawler里的filter_publications_at_output
-        """
-        for paper in papers:
-            yield paper
-
-    @abc.abstractmethod
-    async def write_paper(self, paper: Paper) -> None:
-        pass
-
-    @abc.abstractmethod
-    async def write_reference(self, paper: Paper, reference: Paper) -> None:
-        pass
-
-    @abc.abstractmethod
-    async def get_corrlated_authors(self, paper: Paper) -> AsyncIterable[dict]:
-        """
-        Return existing authors (in dict format) of a paper in database
-        用于将数据库中的作者与爬到的作者进行匹配
-        """
-        async for author in paper.authors():
-            yield author.__dict__()
-
-    @abc.abstractmethod
-    async def write_author(self, paper: Paper, author_kv: dict, write_fields: dict, division_kv: bool) -> None:
-        pass
-
-    async def write(self, crawler: Crawler) -> None:
-        exist_papers = set()
-        async for paper in self.filter_papers(tqdm(crawler.papers.values(), desc="Writing papers")):
-            await self.write_paper(paper)
-            async for author_kv, write_fields, division_kv in crawler.match_authors(paper, self.get_corrlated_authors(paper)):
-                await self.write_author(paper, author_kv, write_fields, division_kv)
-            exist_papers.add(paper.paperId())
-        for paperId, refs_paperId in tqdm(crawler.ref_idx.items(), desc="Writing citations"):
-            if paperId not in exist_papers:
+    async def _init_papers(self):
+        tasks = []
+        for paperId in self._init_paper_list:
+            if paperId in self.fetched:
                 continue
-            for ref_paperId in refs_paperId:
-                if ref_paperId not in exist_papers:
-                    continue
-                await self.write_reference(crawler.papers[paperId], crawler.papers[ref_paperId])
+            self.fetched.add(paperId)
+            logger.info("Init paper: %s" % paperId)
+            tasks.append(self.init_paper(paperId))
+        async for paperId in self.get_init_paperIds():
+            if paperId in self.fetched:
+                continue
+            self.fetched.add(paperId)
+            logger.info("Init paper: %s" % paperId)
+            tasks.append(self.init_paper(paperId))
+        for paper, news in await asyncio.gather(*tasks):
+            yield paper, news
 
-    def __call__(self, crawler: Crawler) -> Any:
-        return self.write(crawler)
+    async def _bfs_once(self) -> int:
+        # 初始化
+        if not self.inited:
+            async for paper, news in self._init_papers():
+                if isinstance(paper, Paper):
+                    yield paper, news
+            self.inited = True
+
+        # 构造待fetch论文列表
+        paperIds = []
+        for paperId in list(self.papers.keys()):
+            if paperId in self.fetched:
+                continue
+            self.fetched.add(paperId)
+            paperIds.append(paperId)
+            logger.info("Fetch paper: %s" % paperId)
+
+        # 执行fetch论文
+        tasks = [self.init_paper(paperId) for paperId in paperIds]
+        for paper, news in await asyncio.gather(*tasks):
+            if isinstance(paper, Paper):
+                yield paper, news
+
+    async def bfs_once(self) -> None:
+        total, total_news = 0, 0
+        async for paper, news in self.summarizer.filter_papers(self._bfs_once()):
+            total += 1
+            total_news += news
+            await self.summarizer.write_paper(paper)  # _bfs_once里面出来的每个paper都是新的，所以直接写入
+            async for author_kv, write_fields, division_kv in self.match_authors(paper, self.summarizer.get_corrlated_authors(paper)):
+                # _bfs_once里面出来的每个paper都是新的，所以直接写入
+                await self.summarizer.write_author(paper, author_kv, write_fields, division_kv)
+            for paperId, refs_paperId in list(self.ref_idx.items()):
+                # _bfs_once里面出来的paper不能保证引文全部已获取到
+                for ref_paperId in list(refs_paperId):
+                    if not (paperId == paper.paperId() or ref_paperId == paper.paperId()):
+                        continue  # 只写入相关的论文引文
+                    if not (paperId in self.papers and ref_paperId in self.papers):
+                        continue  # 只写入已入库的论文引文
+                    await self.summarizer.write_reference(self.papers[paperId], self.papers[ref_paperId])
+                    refs_paperId.remove(ref_paperId)  # 删除已入库的论文引文
+                    if len(refs_paperId) <= 0:
+                        del self.ref_idx[paperId]  # 删除已入库的论文引文
+        logger.info("Fetched %d papers from %d papers" % (total_news, total))
+        return total_news

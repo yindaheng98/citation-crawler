@@ -39,7 +39,7 @@ async def filter_papers_at_crawler(papers, year, keywords):
 
 
 async def bfs_to_end(graph, limit: int = 0):
-    while max(*(await graph.bfs_once())) > 0 and (limit != 0):
+    while (await graph.bfs_once()) > 0 and (limit != 0):
         logger.info("Still running......")
         limit -= 1
 
@@ -67,7 +67,7 @@ class DefaultNetworkxSummarizer(NetworkxSummarizer):
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        for paper in papers:
+        async for paper in papers:
             yield paper
 
 
@@ -80,10 +80,13 @@ def func_parser_nx(parser):
     args = parser.parse_args()
     dest = args.dest
     logger.info(f"Specified dest: {dest}")
-    crawler = DefaultSemanticScholarCrawler(year, keywords, aid_list, pid_list)
-    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
     summarizer = DefaultNetworkxSummarizer()
-    asyncio.get_event_loop().run_until_complete(summarizer(crawler))
+    crawler = DefaultSemanticScholarCrawler(
+        year, keywords,
+        aid_list,
+        paperId_list=pid_list, summarizer=summarizer
+    )
+    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
     asyncio.get_event_loop().run_until_complete(summarizer.save(dest))
 
 
@@ -97,7 +100,7 @@ class DefaultNeo4jSummarizer(Neo4jSummarizer):
 
     async def filter_papers(self, papers):
         """在输出时过滤`Paper`，被过滤掉的`Paper`将不会出现在输出中"""
-        for paper in papers:
+        async for paper in papers:
             yield paper
 
 
@@ -112,12 +115,15 @@ def func_parser_n4j(parser):
     year, keywords, pid_list, aid_list, limit = func_parser(parser)
     args = parser.parse_args()
     logger.info(f"Specified uri and auth: {args.uri} {args.username} {'******' if args.password else 'none'}")
-    crawler = DefaultSemanticScholarCrawler(year, keywords, aid_list, pid_list)
-    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
     with GraphDatabase.driver(args.uri, auth=(args.username, args.password)) as driver:
         with driver.session() as session:
             summarizer = DefaultNeo4jSummarizer(session)
-            asyncio.get_event_loop().run_until_complete(summarizer(crawler))
+            crawler = DefaultSemanticScholarCrawler(
+                year, keywords,
+                aid_list,
+                paperId_list=pid_list, summarizer=summarizer
+            )
+            asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
 
 
 parser_n4j.set_defaults(func=func_parser_n4j)
