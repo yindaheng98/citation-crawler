@@ -60,9 +60,10 @@ python -m citation_crawler neo4j -h
 usage: __main__.py neo4j [-h] [--auth AUTH] --uri URI
 
 optional arguments:
-  -h, --help   show this help message and exit
-  --auth AUTH  Auth to neo4j database.
-  --uri URI    URI to neo4j database.
+  -h, --help           show this help message and exit
+  --username USERNAME  Auth username to neo4j database.
+  --password PASSWORD  Auth password to neo4j database.
+  --uri URI            URI to neo4j database.
 ```
 
 ### Config environment variables
@@ -84,6 +85,8 @@ optional arguments:
   * default: `7` (author may publish frequently)
 * `HTTP_PROXY`
   * Set it `http://your_user:your_password@your_proxy_url:your_proxy_port` if you want to use proxy
+* `HTTP_TIMEOUT`
+  * Timeout for each http request, in seconds
 * `HTTP_CONCORRENT`
   * Concurrent HTTP requests
   * default: `8`

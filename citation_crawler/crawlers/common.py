@@ -54,7 +54,9 @@ async def download_item(url: str, path: str, cache_days: int, is_valid: Callable
     async with http_sem:
         try:
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
-                async with session.get(url, proxy=os.getenv("HTTP_PROXY")) as response:
+                async with session.get(url,
+                                       proxy=os.getenv("HTTP_PROXY"),
+                                       timeout=os.getenv("HTTP_TIMEOUT") or 30) as response:
                     logger.debug(" download: %s <- %s" % (path, url))
                     text = await response.text()
                     assert is_valid(text)
