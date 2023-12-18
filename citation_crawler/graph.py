@@ -1,10 +1,10 @@
 import abc
 import logging
 import asyncio
-from tqdm import tqdm
+from tqdm.asyncio import tqdm
 from typing import Any, Tuple, Optional, Iterable, AsyncIterable
 import random
-
+from dblp_crawler.gather import gather
 from .items import Paper
 
 
@@ -147,7 +147,7 @@ class Crawler(metaclass=abc.ABCMeta):
             logger.info("Init paper: %s" % paperId)
             tasks.append(self.init_paper(paperId))
         random.shuffle(tasks)
-        for paper, news in tqdm(await asyncio.gather(*tasks), desc="Writing init papers"):
+        async for paper, news in tqdm(gather(*tasks), desc="Writing init papers", total=len(tasks)):
             yield paper, news
 
     async def _bfs_once(self) -> int:
@@ -170,7 +170,7 @@ class Crawler(metaclass=abc.ABCMeta):
         # 执行fetch论文
         tasks = [self.init_paper(paperId) for paperId in paperIds]
         random.shuffle(tasks)
-        for paper, news in tqdm(await asyncio.gather(*tasks), desc="Writing papers"):
+        async for paper, news in tqdm(gather(*tasks), desc="Writing papers", total=len(tasks)):
             if isinstance(paper, Paper):
                 yield paper, news
 
