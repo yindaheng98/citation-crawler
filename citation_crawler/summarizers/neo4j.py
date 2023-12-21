@@ -85,7 +85,7 @@ def divide_author(tx, paper: Paper, author_kv, write_fields, division_kv):
     tx.run("MERGE (p:Publication {title_hash: $title_hash}) " +
            ('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
            (f'SET {",".join([f"a.{k}=${k}" for k in write_fields])}' if len(write_fields) > 0 else "") +
-           " MERGE (a)-[:WRITE]->(b)",
+           " MERGE (a)-[:WRITE]->(p)",
            title_hash=paper.title_hash(), **write_fields)
 
 
