@@ -133,6 +133,14 @@ class SSPaper(Paper):
             if author.authorId():
                 yield "authorId", author.authorId()
 
+    async def get_references(self) -> Iterable[Paper]:
+        async for paper in get_references(self.paperId()):
+            yield paper
+
+    async def get_citations(self) -> Iterable[Paper]:
+        async for paper in get_citations(self.paperId()):
+            yield paper
+
 
 fields_references = f"title,year,authors,externalIds,publicationTypes,journal"
 root_references = f"semanticscholar/references--{fields_references.replace(',', '-')}"

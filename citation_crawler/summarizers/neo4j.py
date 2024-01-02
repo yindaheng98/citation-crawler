@@ -87,6 +87,32 @@ async def divide_author(tx, paper: Paper, author_kv, write_fields, division_kv):
                  title_hash=paper.title_hash(), **write_fields)
 
 
+async def _add_references(tx, paper: Paper):
+    title_hash_exists = set([
+        title_hash for (title_hash,) in
+        await (await tx.run("MATCH (a:Publication)-[:CITE]->(p:Publication {title_hash: $title_hash}) RETURN a.title_hash",
+               title_hash=paper.title_hash())).values()
+    ])
+    async for ref in paper.get_references():
+        if ref.title_hash() in title_hash_exists:
+            continue
+        await add_paper(tx, ref)
+        await add_reference(tx, paper, ref)
+
+
+async def _add_citations(tx, paper: Paper):
+    title_hash_exists = set([
+        title_hash for (title_hash,) in
+        await (await tx.run("MATCH (p:Publication {title_hash: $title_hash})-[:CITE]->(a:Publication) RETURN a.title_hash",
+               title_hash=paper.title_hash())).values()
+    ])
+    async for cit in paper.get_references():
+        if cit.title_hash() in title_hash_exists:
+            continue
+        await add_paper(tx, cit)
+        await add_reference(tx, cit, paper)
+
+
 class Neo4jSummarizer(Summarizer):
     def __init__(self, session: AsyncSession, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -94,6 +120,8 @@ class Neo4jSummarizer(Summarizer):
 
     async def write_paper(self, paper) -> None:
         await self.session.execute_write(add_paper, paper)
+        await self.session.execute_write(_add_references, paper)
+        await self.session.execute_write(_add_citations, paper)
 
     async def write_reference(self, paper, reference) -> None:
         await self.session.execute_write(add_reference, paper, reference)

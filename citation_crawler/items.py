@@ -1,6 +1,7 @@
 import abc
 import re
 from typing import Optional, Iterable, Tuple
+from typing_extensions import Self
 
 
 class Author(metaclass=abc.ABCMeta):
@@ -64,6 +65,14 @@ class Paper(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     async def authors_kv(self) -> Iterable[Tuple[str, str]]:
         """key and correlated value to match authors"""
+        return
+
+    @abc.abstractmethod
+    async def get_references(self) -> Iterable[Self]:
+        return
+
+    @abc.abstractmethod
+    async def get_citations(self) -> Iterable[Self]:
         return
 
     async def __dict__(self) -> dict:
