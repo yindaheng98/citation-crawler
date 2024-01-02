@@ -75,7 +75,7 @@ parser_nx = subparsers.add_parser('networkx', help='Write results to a json file
 parser_nx.add_argument("--dest", type=str, required=True, help=f'Path to write results.')
 
 
-def func_parser_nx(parser):
+async def func_parser_nx_async(parser):
     year, keywords, pid_list, aid_list, limit = func_parser(parser)
     args = parser.parse_args()
     dest = args.dest
@@ -86,8 +86,12 @@ def func_parser_nx(parser):
         aid_list,
         paperId_list=pid_list, summarizer=summarizer
     )
-    asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
-    asyncio.get_event_loop().run_until_complete(summarizer.save(dest))
+    await bfs_to_end(crawler, limit)
+    await summarizer.save(dest)
+
+
+def func_parser_nx(parser):
+    asyncio.get_event_loop().run_until_complete(func_parser_nx_async(parser))
 
 
 parser_nx.set_defaults(func=func_parser_nx)
@@ -110,20 +114,24 @@ parser_n4j.add_argument("--password", type=str, default=None, help=f'Auth passwo
 parser_n4j.add_argument("--uri", type=str, required=True, help=f'URI to neo4j database.')
 
 
-def func_parser_n4j(parser):
-    from neo4j import GraphDatabase
+async def func_parser_n4j_async(parser):
+    from neo4j import AsyncGraphDatabase
     year, keywords, pid_list, aid_list, limit = func_parser(parser)
     args = parser.parse_args()
     logger.info(f"Specified uri and auth: {args.uri} {args.username} {'******' if args.password else 'none'}")
-    with GraphDatabase.driver(args.uri, auth=(args.username, args.password)) as driver:
-        with driver.session() as session:
+    async with AsyncGraphDatabase.driver(args.uri, auth=(args.username, args.password)) as driver:
+        async with driver.session() as session:
             summarizer = DefaultNeo4jSummarizer(session)
             crawler = DefaultSemanticScholarCrawler(
                 year, keywords,
                 aid_list,
                 paperId_list=pid_list, summarizer=summarizer
             )
-            asyncio.get_event_loop().run_until_complete(bfs_to_end(crawler, limit))
+            await bfs_to_end(crawler, limit)
+
+
+def func_parser_n4j(parser):
+    asyncio.get_event_loop().run_until_complete(func_parser_n4j_async(parser))
 
 
 parser_n4j.set_defaults(func=func_parser_n4j)
