@@ -223,7 +223,7 @@ async def get_paperIds_by_authorId(authorId: str) -> List[str]:
 
 class SemanticScholarCrawler(Crawler):
 
-    def __init__(self, authorId_list: list[str], *args, **kwargs) -> None:
+    def __init__(self, authorId_list: List[str], *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.authors = authorId_list
 

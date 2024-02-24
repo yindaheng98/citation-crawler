@@ -2,7 +2,7 @@ import abc
 import logging
 import asyncio
 from tqdm.asyncio import tqdm
-from typing import Any, Tuple, Optional, Iterable, AsyncIterable
+from typing import Tuple, Optional, AsyncIterable, List
 import random
 from dblp_crawler.gather import gather
 from .items import Paper
@@ -45,12 +45,12 @@ class Summarizer(metaclass=abc.ABCMeta):
 
 
 class Crawler(metaclass=abc.ABCMeta):
-    def __init__(self, summarizer: Summarizer, paperId_list: list[str]) -> None:
+    def __init__(self, summarizer: Summarizer, paperId_list: List[str]) -> None:
         self.summarizer = summarizer
         self._init_paper_list = paperId_list
-        self.papers: dict[str, Paper] = {}
+        self.papers: Dict[str, Paper] = {}
         self.fetched = set()
-        self.ref_idx: dict[str, set[str]] = {}
+        self.ref_idx: Dict[str, set[str]] = {}
         self.inited = False
 
     @abc.abstractmethod
