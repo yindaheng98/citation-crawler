@@ -27,6 +27,10 @@ class SSAuthor(Author):
     def dblp_pid(self) -> Optional[str]:
         return None
 
+    def homepage(self) -> Optional[str]:
+        if 'homepage' in self.data:
+            return self.data['homepage']
+
     def dblp_name(self) -> Optional[List[str]]:
         if 'externalIds' in self.data and self.data['externalIds'] and 'DBLP' in self.data['externalIds']:
             return self.data['externalIds']['DBLP']
@@ -54,7 +58,7 @@ async def download_list(url: str, path: str, cache_days: int):
     return json.loads(text)
 
 
-fields_authors = "externalIds,name,affiliations"
+fields_authors = "externalIds,name,affiliations,homepage"
 root_authors = f"semanticscholar/authors--{fields_authors.replace(',', '-')}"
 
 
@@ -113,7 +117,7 @@ class SSPaper(Paper):
         for author in self.author_data:
             yield author
 
-    async def authors(self) -> Iterable[Author]:
+    async def authors(self) -> Iterable[SSAuthor]:
         if 'authors' in self.data and len(self.data['authors']) >= 0:
             for a in self.data['authors']:
                 if 'authorId' not in a or 'externalIds' not in a or not a['externalIds']:
@@ -254,7 +258,10 @@ class SemanticScholarCrawler(Crawler):
         async for author in authors:
             if 'authorId' in author:
                 if author['authorId'] in authorIds:
+                    ss_author = dblp_names[author['name']]
                     write_fields = {}
+                    if ss_author.homepage():
+                        write_fields["homepage"] = ss_author.homepage()
                     author_kv = {"authorId": author['authorId']}
                     yield author_kv, write_fields, None
                 else:  # if there is an author in database but is not really an author
@@ -267,5 +274,7 @@ class SemanticScholarCrawler(Crawler):
             elif 'name' in author and author['name'] in dblp_names:
                 ss_author = dblp_names[author['name']]
                 write_fields = {"authorId": ss_author.authorId()}
+                if ss_author.homepage():
+                    write_fields["homepage"] = ss_author.homepage()
                 author_kv = {"dblp_pid": author["dblp_pid"]}
                 yield author_kv, write_fields, None
