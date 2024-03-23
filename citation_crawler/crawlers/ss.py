@@ -258,7 +258,7 @@ class SemanticScholarCrawler(Crawler):
         async for author in authors:
             if 'authorId' in author:
                 if author['authorId'] in authorIds:
-                    ss_author = dblp_names[author['name']]
+                    ss_author = authorIds[author['authorId']]
                     write_fields = {}
                     if ss_author.homepage():
                         write_fields["homepage"] = ss_author.homepage()
