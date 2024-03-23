@@ -102,7 +102,7 @@ class SSPaper(Paper):
             return self.data['publicationDate']
 
     def doi(self) -> Optional[str]:
-        if 'externalIds' in self.data and 'DOI' in self.data['externalIds']:
+        if 'externalIds' in self.data and self.data['externalIds'] and 'DOI' in self.data['externalIds']:
             doi = self.data['externalIds']['DOI']
             u = urlparse(doi)
             doi = re.sub(r"^/+", "", u.path)
