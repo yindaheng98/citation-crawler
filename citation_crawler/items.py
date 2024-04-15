@@ -59,6 +59,10 @@ class Paper(metaclass=abc.ABCMeta):
         return None
 
     @abc.abstractmethod
+    def abstract(self) -> Optional[str]:
+        return None
+
+    @abc.abstractmethod
     async def authors(self) -> Iterable[Author]:
         return
 
@@ -91,6 +95,8 @@ class Paper(metaclass=abc.ABCMeta):
             d['date'] = self.date()
         if self.doi():
             d['doi'] = self.doi()
+        if self.abstract():
+            d['abstract'] = self.abstract()
         d['authors'] = []
         async for author in self.authors():
             d['authors'].append(author.__dict__())

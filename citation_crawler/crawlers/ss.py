@@ -108,6 +108,10 @@ class SSPaper(Paper):
             doi = re.sub(r"^/+", "", u.path)
             return doi
 
+    def abstract(self) -> Optional[int]:
+        if 'abstract' in self.data:
+            return self.data['abstract']
+
     async def _get_authors_from_author_data(self) -> Iterable[Author]:
         if not self.author_data:
             authors = []
@@ -146,7 +150,7 @@ class SSPaper(Paper):
             yield paper
 
 
-fields_references = f"title,year,authors,externalIds,publicationTypes,journal"
+fields_references = f"title,abstract,year,authors,externalIds,publicationTypes,journal"
 root_references = f"semanticscholar/references--{fields_references.replace(',', '-')}"
 root_citations = f"semanticscholar/citations--{fields_references.replace(',', '-')}"
 
@@ -192,7 +196,7 @@ async def download_paper(url: str, path: str, cache_days: int):
 
 
 fields_authors_sub = ','.join([("authors." + f) for f in fields_authors.split(',')])
-fields_paper = f"title,year,publicationDate,{fields_authors_sub},externalIds,publicationTypes,journal"
+fields_paper = f"title,abstract,year,publicationDate,{fields_authors_sub},externalIds,publicationTypes,journal"
 root_paper = f"semanticscholar/paper--{fields_paper.replace(',', '-')}"
 
 

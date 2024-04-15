@@ -16,6 +16,8 @@ async def add_paper(tx, paper: Paper):
         "SET p.title=$title, p.year=$year"
     if paper.doi():
         n4jset += ", p.doi=$doi"
+    if paper.abstract():
+        n4jset += ", p.abstract=$abstract"
     if paper.dblp_id():
         n4jset += ", p.dblp_key=$dblp_id"
     if paper.paperId():
@@ -39,6 +41,7 @@ async def add_paper(tx, paper: Paper):
                  paperId=paper.paperId(),
                  dblp_id=paper.dblp_id(),
                  doi=paper.doi(),
+                 abstract=paper.abstract(),
                  date=date)
 
 
