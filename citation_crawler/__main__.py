@@ -112,7 +112,8 @@ parser_n4j = subparsers.add_parser('neo4j', help='Write result to neo4j database
 parser_n4j.add_argument("--username", type=str, default=None, help=f'Auth username to neo4j database.')
 parser_n4j.add_argument("--password", type=str, default=None, help=f'Auth password to neo4j database.')
 parser_n4j.add_argument("--uri", type=str, required=True, help=f'URI to neo4j database.')
-parser_n4j.add_argument("--no-skip-exists", action="store_true", help=f'Do not skip exists references. Use it when you want to rewrite all papers.')
+parser_n4j.add_argument("--no-skip-exists", action="store_true",
+                        help=f'Do not skip exists references. Use it when you want to rewrite all papers.')
 
 
 async def func_parser_n4j_async(parser):

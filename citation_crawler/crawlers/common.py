@@ -61,12 +61,12 @@ async def download_item(url: str, path: str, cache_days: int, is_valid: Callable
             async with file_sem:
                 try:
                     async with async_open(save_path, 'r') as f:
-                        logger.debug("use cache: %s -> %s" % (path, url))
+                        logger.info("use cache: %s -> %s" % (path, url))
                         text = await f.read()
                     assert is_valid(text)
                     return text
                 except:
-                    logger.debug(" no cache: %s" % save_path)
+                    logger.info(" no cache: %s" % save_path)
                     if os.path.exists(save_path):
                         logger.info("err cache: %s" % save_path)
                         try:
@@ -89,7 +89,7 @@ async def download_item(url: str, path: str, cache_days: int, is_valid: Callable
                 async with session.get(url,
                                        proxy=os.getenv("HTTP_PROXY"),
                                        timeout=os.getenv("HTTP_TIMEOUT") or 30) as response:
-                    logger.debug(" download: %s <- %s" % (path, url))
+                    logger.info(" download: %s <- %s" % (path, url))
                     text = await response.text()
                     assert is_valid(text)
                     os.makedirs(os.path.dirname(save_path), exist_ok=True)
