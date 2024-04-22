@@ -15,7 +15,7 @@ package_dir = {
 
 setup(
     name='citation_crawler',
-    version='2.8.4',
+    version='2.9',
     author='yindaheng98',
     author_email='yindaheng98@gmail.com',
     url='https://github.com/yindaheng98/citation-crawler',

@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Callable
 import os
+import json
 from datetime import datetime, timedelta
 
 import aiohttp
@@ -20,9 +21,20 @@ def getenv_int(key) -> int:
     return None
 
 
+def getenv_headers(key) -> Dict:
+    headers = os.getenv(key)
+    if headers is not None:
+        try:
+            return json.loads(headers)
+        except:
+            pass
+    return None
+
+
 http_concorent = getenv_int('HTTP_CONCORRENT')
 http_sem = Semaphore(http_concorent if http_concorent is not None else 8)
 file_sem = Semaphore(512)
+http_headers = getenv_headers('HTTP_HEADERS')
 
 
 def get_cache_datetime(path) -> datetime:
@@ -53,7 +65,7 @@ async def download_item(url: str, path: str, cache_days: int, is_valid: Callable
 
     async with http_sem:
         try:
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False), headers=http_headers) as session:
                 async with session.get(url,
                                        proxy=os.getenv("HTTP_PROXY"),
                                        timeout=os.getenv("HTTP_TIMEOUT") or 30) as response:

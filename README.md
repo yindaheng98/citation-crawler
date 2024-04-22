@@ -90,6 +90,9 @@ optional arguments:
 * `HTTP_CONCORRENT`
   * Concurrent HTTP requests
   * default: `8`
+* `HTTP_HEADERS`
+  * Headers for HTTP requests
+  * default: None
 
 ### Write to a JSON file
 
