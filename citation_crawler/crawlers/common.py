@@ -61,7 +61,7 @@ async def download_item(url: str, path: str, cache_days: int, is_valid: Callable
             async with file_sem:
                 try:
                     async with async_open(save_path, 'r') as f:
-                        logger.info("use cache: %s -> %s" % (path, url))
+                        logger.debug("use cache: %s -> %s" % (path, url))
                         text = await f.read()
                     assert is_valid(text)
                     return text
