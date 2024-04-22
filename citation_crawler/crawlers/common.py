@@ -47,6 +47,7 @@ http_sem = Semaphore(http_concorent if http_concorent is not None else 8)
 file_sem = Semaphore(512)
 http_headers = getenv_headers('HTTP_HEADERS')
 http_sleep = getenv_float('HTTP_SLEEP') or 0
+last_request_time = datetime.now()
 
 
 def get_cache_datetime(path) -> datetime:
@@ -78,6 +79,13 @@ async def download_item(url: str, path: str, cache_days: int, is_valid: Callable
     async with http_sem:
         try:
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False), headers=http_headers) as session:
+                if http_sleep is not None:
+                    global last_request_time
+                    last_request_timedelta = datetime.now() - last_request_time
+                    last_request_time += last_request_timedelta
+                    wait = http_sleep - last_request_timedelta.total_seconds()
+                    if wait > 0:
+                        await asyncio.sleep(wait)
                 async with session.get(url,
                                        proxy=os.getenv("HTTP_PROXY"),
                                        timeout=os.getenv("HTTP_TIMEOUT") or 30) as response:
