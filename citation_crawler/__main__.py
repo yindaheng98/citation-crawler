@@ -112,6 +112,7 @@ parser_n4j = subparsers.add_parser('neo4j', help='Write result to neo4j database
 parser_n4j.add_argument("--username", type=str, default=None, help=f'Auth username to neo4j database.')
 parser_n4j.add_argument("--password", type=str, default=None, help=f'Auth password to neo4j database.')
 parser_n4j.add_argument("--uri", type=str, required=True, help=f'URI to neo4j database.')
+parser_n4j.add_argument("--no-skip-exists", action="store_true", help=f'Do not skip exists references. Use it when you want to rewrite all papers.')
 
 
 async def func_parser_n4j_async(parser):
@@ -121,7 +122,7 @@ async def func_parser_n4j_async(parser):
     logger.info(f"Specified uri and auth: {args.uri} {args.username} {'******' if args.password else 'none'}")
     async with AsyncGraphDatabase.driver(args.uri, auth=(args.username, args.password)) as driver:
         async with driver.session() as session:
-            summarizer = DefaultNeo4jSummarizer(session)
+            summarizer = DefaultNeo4jSummarizer(session, not args.no_skip_exists)
             crawler = DefaultSemanticScholarCrawler(
                 year, keywords,
                 aid_list,
