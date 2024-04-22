@@ -92,7 +92,10 @@ optional arguments:
   * default: `8`
 * `HTTP_HEADERS`
   * Headers for HTTP requests
-  * default: None
+  * default: `None`
+* `HTTP_SLEEP`
+  * Sleep after request (in seconds)
+  * default: `0`
 
 ### Write to a JSON file
 

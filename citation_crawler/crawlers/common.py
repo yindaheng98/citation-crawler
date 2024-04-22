@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import aiohttp
 import logging
 from aiofile import async_open
+import asyncio
 from asyncio import Semaphore
 
 logger = logging.getLogger("common")
@@ -16,6 +17,16 @@ def getenv_int(key) -> int:
     if cache_days is not None:
         try:
             return int(cache_days)
+        except:
+            pass
+    return None
+
+
+def getenv_float(key) -> float:
+    cache_days = os.getenv(key)
+    if cache_days is not None:
+        try:
+            return float(cache_days)
         except:
             pass
     return None
@@ -35,6 +46,7 @@ http_concorent = getenv_int('HTTP_CONCORRENT')
 http_sem = Semaphore(http_concorent if http_concorent is not None else 8)
 file_sem = Semaphore(512)
 http_headers = getenv_headers('HTTP_HEADERS')
+http_sleep = getenv_float('HTTP_SLEEP') or 0
 
 
 def get_cache_datetime(path) -> datetime:
@@ -75,6 +87,8 @@ async def download_item(url: str, path: str, cache_days: int, is_valid: Callable
                     os.makedirs(os.path.dirname(save_path), exist_ok=True)
                     async with async_open(save_path, 'w') as f:
                         await f.write(text)
+                    if http_sleep is not None:
+                        await asyncio.sleep(http_sleep)
                     return text
         except Exception as e:
             logger.error(" down err: %s" % e)
