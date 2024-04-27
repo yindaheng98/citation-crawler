@@ -46,8 +46,8 @@ async def add_paper(tx, paper: Paper):
 
 
 async def add_reference(tx, a: Paper, b: Paper):
-    await tx.run("MERGE (a:Publication {title_hash: $a}) "
-                 "MERGE (b:Publication {title_hash: $b}) "
+    await tx.run("MATCH (a:Publication {title_hash: $a}) "
+                 "MATCH (b:Publication {title_hash: $b}) "
                  "MERGE (a)-[:CITE]->(b)",
                  a=a.title_hash(), b=b.title_hash())
 
@@ -69,7 +69,7 @@ async def match_authors_kv(tx, k, v):
 
 
 async def link_author(tx, paper: Paper, author_kv, write_fields):
-    await tx.run("MERGE (p:Publication {title_hash: $title_hash}) " +
+    await tx.run("MATCH (p:Publication {title_hash: $title_hash}) " +
                  ('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
                  (f'SET {",".join([f"a.{k}=${k}" for k in write_fields])}' if len(write_fields) > 0 else "") +
                  " MERGE (a)-[:WRITE]->(p)",
@@ -83,7 +83,7 @@ async def divide_author(tx, paper: Paper, author_kv, write_fields, division_kv):
                  "DELETE r" % (",".join([f'{k}: ${k}' for k in division_kv])),
                  title_hash=paper.title_hash(), **division_kv)
     write_fields = {**author_c, **write_fields, **author_kv}
-    await tx.run("MERGE (p:Publication {title_hash: $title_hash}) " +
+    await tx.run("MATCH (p:Publication {title_hash: $title_hash}) " +
                  ('MERGE (a:Person {%s}) ' % (",".join([f'{k}: ${k}' for k in author_kv]))) +
                  (f'SET {",".join([f"a.{k}=${k}" for k in write_fields])}' if len(write_fields) > 0 else "") +
                  " MERGE (a)-[:WRITE]->(p)",
