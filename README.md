@@ -165,6 +165,7 @@ python -m dblp_crawler -k video -k edge -p 27d5dc70280c8628f181a7f8881912025f808
 Without index, NEO4J query will be very very slow. So before you start, you should add some index:
 
 ```cql
+CREATE TEXT INDEX publication_title_hash_text_index FOR (p:Publication) ON (p.title_hash);
 CREATE INDEX publication_title_hash_index FOR (p:Publication) ON (p.title_hash);
 CREATE INDEX publication_dblp_key_index FOR (p:Publication) ON (p.dblp_key);
 CREATE INDEX publication_paper_id_index FOR (p:Publication) ON (p.paperId);

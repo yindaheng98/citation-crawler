@@ -47,7 +47,7 @@ def match_papers_keywords(tx, year, *arg_keywords):
             if not k:
                 continue
             ki += 1
-            k_and.append(f"toLower(p.title) CONTAINS $keyword{ki}")
+            k_and.append(f"p.title_hash CONTAINS $keyword{ki}")
             v_and[f"keyword{ki}"] = k
         k_or.append(f"({' and '.join(k_and)})")
         v_or = {**v_or, **v_and}
