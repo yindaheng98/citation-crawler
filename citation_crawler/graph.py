@@ -1,8 +1,7 @@
 import abc
 import logging
-import asyncio
 from tqdm.asyncio import tqdm
-from typing import Tuple, Optional, AsyncIterable, List
+from typing import Tuple, Optional, AsyncIterable, List, Dict
 import random
 from dblp_crawler.gather import gather
 from .items import Paper
@@ -150,7 +149,7 @@ class Crawler(metaclass=abc.ABCMeta):
         async for paper, news in tqdm(gather(*tasks), desc="Writing init papers", total=len(tasks)):
             yield paper, news
 
-    async def _bfs_once(self) -> int:
+    async def _bfs_once(self):
         # 初始化
         if not self.inited:
             async for paper, news in self._init_papers():
